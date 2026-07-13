@@ -156,12 +156,10 @@ class _LoginPageState extends State<LoginPage> {
                             } on FirebaseAuthException catch (e) {
                               String message = "Something went wrong.";
 
-                              if (e.code == 'user-not-found') {
-                                message = "No account found with this email.";
-                              } else if (e.code == 'wrong-password') {
-                                message = "Incorrect password.";
-                              } else if (e.code == 'invalid-email') {
+                              if (e.code == 'invalid-email') {
                                 message = "Please enter a valid email.";
+                              } else if (e.code == 'invalid-credential') {
+                                message = "Email or password is incorrect.";
                               } else if (e.code == 'network-request-failed') {
                                 message =
                                     "Please check your internet connection.";
