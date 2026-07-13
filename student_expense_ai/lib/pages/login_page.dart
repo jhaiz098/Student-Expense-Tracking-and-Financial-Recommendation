@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'register_page.dart';
+import '../services/auth_service.dart';
+import 'home_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,6 +14,8 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final AuthService auth = AuthService();
+  final _formKey = GlobalKey<FormState>();
 
   bool obscurePassword = true;
 
@@ -50,64 +55,144 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 40),
 
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: "Email",
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: "Email",
+                          prefixIcon: Icon(Icons.email_outlined),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Email is required";
+                          }
 
-                const SizedBox(height: 20),
+                          if (!value.contains("@")) {
+                            return "Enter a valid email";
+                          }
 
-                TextField(
-                  controller: passwordController,
-                  obscureText: obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                          return null;
+                        },
                       ),
-                      onPressed: () {
-                        setState(() {
-                          obscurePassword = !obscurePassword;
-                        });
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
 
-                const SizedBox(height: 10),
+                      const SizedBox(height: 20),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text("Forgot Password?"),
-                  ),
-                ),
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: "Password",
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                obscurePassword = !obscurePassword;
+                              });
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Password is required";
+                          }
 
-                const SizedBox(height: 10),
+                          if (value.length < 6) {
+                            return "Password must be at least 6 characters";
+                          }
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // TODO Login
-                    },
-                    child: const Text("LOGIN", style: TextStyle(fontSize: 18)),
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {},
+                          child: const Text("Forgot Password?"),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (!_formKey.currentState!.validate()) {
+                              return;
+                            }
+
+                            try {
+                              await auth.login(
+                                emailController.text.trim(),
+                                passwordController.text.trim(),
+                              );
+
+                              // Login success
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const HomePage(),
+                                ),
+                              );
+                            } on FirebaseAuthException catch (e) {
+                              String message = "Something went wrong.";
+
+                              if (e.code == 'user-not-found') {
+                                message = "No account found with this email.";
+                              } else if (e.code == 'wrong-password') {
+                                message = "Incorrect password.";
+                              } else if (e.code == 'invalid-email') {
+                                message = "Please enter a valid email.";
+                              } else if (e.code == 'network-request-failed') {
+                                message =
+                                    "Please check your internet connection.";
+                              }
+
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: const Text("Login Failed"),
+                                    content: Text(message),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text("OK"),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            }
+                          },
+                          child: const Text(
+                            "LOGIN",
+                            style: TextStyle(fontSize: 18),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'login_page.dart';
+import 'home_page.dart';
+import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -14,6 +17,10 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
+
+  final _formKey = GlobalKey<FormState>();
+
+  final AuthService auth = AuthService();
 
   bool obscurePassword = true;
   bool obscureConfirmPassword = true;
@@ -63,93 +70,214 @@ class _RegisterPageState extends State<RegisterPage> {
 
               const SizedBox(height: 40),
 
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: "Full Name",
-                  prefixIcon: Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: "Email",
-                  prefixIcon: Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              TextField(
-                controller: passwordController,
-                obscureText: obscurePassword,
-                decoration: InputDecoration(
-                  labelText: "Password",
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscurePassword ? Icons.visibility_off : Icons.visibility,
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: "Full Name",
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Full name is required";
+                        }
+                        return null;
+                      },
                     ),
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
-                    },
-                  ),
-                ),
-              ),
 
-              const SizedBox(height: 18),
+                    const SizedBox(height: 18),
 
-              TextField(
-                controller: confirmPasswordController,
-                obscureText: obscureConfirmPassword,
-                decoration: InputDecoration(
-                  labelText: "Confirm Password",
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscureConfirmPassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: "Email",
+                        prefixIcon: Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Email is required";
+                        }
+
+                        if (!value.contains("@")) {
+                          return "Enter a valid email";
+                        }
+
+                        return null;
+                      },
                     ),
-                    onPressed: () {
-                      setState(() {
-                        obscureConfirmPassword = !obscureConfirmPassword;
-                      });
-                    },
-                  ),
-                ),
-              ),
 
-              const SizedBox(height: 30),
+                    const SizedBox(height: 18),
 
-              SizedBox(
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Register user
-                  },
-                  child: const Text(
-                    "CREATE ACCOUNT",
-                    style: TextStyle(fontSize: 16),
-                  ),
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: "Password",
+                        prefixIcon: Icon(Icons.lock_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              obscurePassword = !obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Password is required";
+                        }
+
+                        if (value.length < 6) {
+                          return "Password must be at least 6 characters";
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextFormField(
+                      controller: confirmPasswordController,
+                      obscureText: obscureConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: "Confirm Password",
+                        prefixIcon: Icon(Icons.lock_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscureConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              obscureConfirmPassword = !obscureConfirmPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value != passwordController.text) {
+                          return "Passwords do not match";
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    SizedBox(
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (!_formKey.currentState!.validate()) {
+                            return;
+                          }
+
+                          try {
+                            await auth.register(
+                              nameController.text.trim(),
+                              emailController.text.trim(),
+                              passwordController.text.trim(),
+                            );
+
+                            nameController.clear();
+                            emailController.clear();
+                            passwordController.clear();
+                            confirmPasswordController.clear();
+
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  title: const Text("Registration Successful"),
+                                  content: const Text(
+                                    "Your account has been created successfully.",
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context); // close dialog
+                                      },
+                                      child: const Text("Continue"),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          } on FirebaseAuthException catch (e) {
+                            if (e.code == 'email-already-in-use') {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: const Text("Registration Failed"),
+                                    content: const Text(
+                                      "This email is already registered. Please use another email.",
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text("OK"),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            } else {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: const Text("Error"),
+                                    content: Text(
+                                      e.message ?? "Something went wrong.",
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text("OK"),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            }
+                          }
+                        },
+                        child: const Text(
+                          "CREATE ACCOUNT",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
