@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "649326221728",
+    "project_id": "kwart-ai-8f93e",
+    "storage_bucket": "kwart-ai-8f93e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:649326221728:android:cc1c3e715e453ef1caacc5",
+        "android_client_info": {
+          "package_name": "com.example.student_expense_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKLVQ_XBPrCZpP2DwSlbCIGi7xwPR-Mqw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
