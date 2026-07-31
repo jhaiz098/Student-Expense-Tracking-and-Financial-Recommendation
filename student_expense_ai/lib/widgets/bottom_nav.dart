@@ -4,8 +4,14 @@ import '../pages/add_transaction_modal.dart';
 class BottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final VoidCallback onTransactionAdded;
 
-  const BottomNav({super.key, required this.currentIndex, required this.onTap});
+  const BottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+    required this.onTransactionAdded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -33,12 +39,12 @@ class BottomNav extends StatelessWidget {
               NavigationDestination(
                 icon: Icon(Icons.smart_toy_outlined),
                 selectedIcon: Icon(Icons.smart_toy),
-                label: "Advisor",
+                label: "Insights",
               ),
               NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: "Profile",
+                icon: Icon(Icons.settings),
+                selectedIcon: Icon(Icons.settings),
+                label: "Settings",
               ),
             ],
             selectedIndex: currentIndex < 2 ? currentIndex : currentIndex + 1,
@@ -58,8 +64,12 @@ class BottomNav extends StatelessWidget {
           Positioned(
             bottom: 7,
             child: FloatingActionButton(
-              onPressed: () {
-                showAddModal(context);
+              onPressed: () async {
+                final result = await showAddModal(context);
+
+                if (result == true) {
+                  onTransactionAdded();
+                }
               },
               elevation: 6,
               shape: const CircleBorder(),

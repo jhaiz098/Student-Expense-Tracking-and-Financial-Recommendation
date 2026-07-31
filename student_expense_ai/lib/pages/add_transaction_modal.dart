@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../database/database_helper.dart';
+import 'package:student_expense_ai/models/category.dart';
 
-void showAddModal(BuildContext context) {
-  Navigator.push(
+Future<bool?> showAddModal(
+  BuildContext context, {
+  Map<String, dynamic>? transaction,
+}) {
+  return Navigator.push<bool>(
     context,
-    MaterialPageRoute(builder: (_) => const AddModalPage()),
+    MaterialPageRoute(builder: (_) => AddModalPage(transaction: transaction)),
   );
 }
 
 class AddModalPage extends StatefulWidget {
-  const AddModalPage({super.key});
+  final Map<String, dynamic>? transaction;
+
+  const AddModalPage({super.key, this.transaction});
 
   @override
   State<AddModalPage> createState() => _AddModalPageState();
@@ -22,80 +27,122 @@ class _AddModalPageState extends State<AddModalPage> {
   final noteController = TextEditingController();
 
   String selectedType = "Expense";
-  String? selectedCategory;
+  Category? selectedCategory;
 
-  final expenseCategories = [
-    Category(name: "Food", icon: Icons.restaurant),
+  List<Category> categories = [];
 
-    Category(name: "Transportation", icon: Icons.directions_car),
+  @override
+  void initState() {
+    super.initState();
+    initializeTransaction();
+  }
 
-    Category(name: "School", icon: Icons.school),
+  Future<void> initializeTransaction() async {
+    if (widget.transaction != null) {
+      selectedType = widget.transaction!["type"];
 
-    Category(name: "Bills", icon: Icons.receipt_long),
+      amountController.text = widget.transaction!["amount"].toString();
 
-    Category(name: "Entertainment", icon: Icons.movie),
+      noteController.text = widget.transaction!["note"] ?? "";
+    }
 
-    Category(name: "Others", icon: Icons.more_horiz),
-  ];
+    List<Category> data = await loadCategories();
 
-  final budgetCategories = [
-    Category(name: "Monthly Budget", icon: Icons.calendar_month),
+    if (widget.transaction != null) {
+      final categoryId = widget.transaction!["categoryId"];
 
-    Category(name: "Weekly Budget", icon: Icons.date_range),
-
-    Category(name: "Savings", icon: Icons.savings),
-
-    Category(name: "Emergency Fund", icon: Icons.health_and_safety),
-  ];
-
-  Future<void> saveTransaction() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-
-      if (user == null) {
-        return;
-      }
-
-      if (amountController.text.isEmpty || selectedCategory == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please complete all fields")),
-        );
-        return;
-      }
-
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(user.uid)
-          .collection("transactions")
-          .add({
-            "type": selectedType,
-            "amount": double.parse(amountController.text),
-            "category": selectedCategory,
-            "note": noteController.text.trim(),
-            "createdAt": Timestamp.now(),
-          });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Transaction saved successfully")),
+      selectedCategory = data.firstWhere(
+        (category) => category.id == categoryId,
       );
 
-      Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      setState(() {});
     }
+  }
+
+  Future<List<Category>> loadCategories() async {
+    final data = selectedType == "Expense"
+        ? await DatabaseHelper.instance.getExpenseCategories()
+        : await DatabaseHelper.instance.getBudgetCategories();
+
+    setState(() {
+      categories = data;
+    });
+
+    return data;
+  }
+
+  Future<void> saveTransaction() async {
+    if (amountController.text.isEmpty || selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please complete all fields")),
+      );
+      return;
+    }
+
+    final data = {
+      "amount": double.parse(amountController.text),
+      "categoryId": selectedCategory!.id,
+      "note": noteController.text.trim(),
+      "createdAt": DateTime.now().toIso8601String(),
+    };
+
+    // EDIT MODE
+    if (widget.transaction != null) {
+      final oldType = widget.transaction!["type"];
+      final id = widget.transaction!["id"];
+
+      // Same type, just update
+      if (oldType == selectedType) {
+        if (selectedType == "Expense") {
+          await DatabaseHelper.instance.updateExpenses(id, data);
+        } else {
+          await DatabaseHelper.instance.updateBudget(id, data);
+        }
+      }
+      // Type changed: move record
+      else {
+        if (oldType == "Expense" && selectedType == "Budget") {
+          await DatabaseHelper.instance.deleteExpenses(id);
+
+          await DatabaseHelper.instance.insertBudget(data);
+        } else if (oldType == "Budget" && selectedType == "Expense") {
+          await DatabaseHelper.instance.deleteBudget(id);
+
+          await DatabaseHelper.instance.insertExpense(data);
+        }
+      }
+    }
+    // ADD MODE
+    else {
+      if (selectedType == "Expense") {
+        await DatabaseHelper.instance.insertExpense(data);
+      } else {
+        await DatabaseHelper.instance.insertBudget(data);
+      }
+    }
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          widget.transaction == null
+              ? "Added successfully"
+              : "Updated successfully",
+        ),
+      ),
+    );
+
+    Navigator.pop(context, true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = selectedType == "Expense"
-        ? expenseCategories
-        : budgetCategories;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Add Transaction"),
+        title: Text(
+          widget.transaction == null ? "Add Transaction" : "Edit Transaction",
+        ),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () {
@@ -201,14 +248,10 @@ class _AddModalPageState extends State<AddModalPage> {
                 return ChoiceChip(
                   avatar: Icon(category.icon, size: 18),
                   label: Text(category.name),
-                  selected: selectedCategory == category.name,
+                  selected: selectedCategory?.id == category.id,
                   onSelected: (selected) {
                     setState(() {
-                      if (selected) {
-                        selectedCategory = category.name;
-                      } else {
-                        selectedCategory = null;
-                      }
+                      selectedCategory = selected ? category : null;
                     });
                   },
                 );
@@ -233,7 +276,10 @@ class _AddModalPageState extends State<AddModalPage> {
         onPressed: () {
           setState(() {
             selectedType = type;
+            selectedCategory = null;
           });
+
+          loadCategories();
         },
 
         icon: Icon(icon),
@@ -254,11 +300,4 @@ class _AddModalPageState extends State<AddModalPage> {
       ),
     );
   }
-}
-
-class Category {
-  final String name;
-  final IconData icon;
-
-  Category({required this.name, required this.icon});
 }

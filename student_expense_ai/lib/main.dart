@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
-import 'pages/login_page.dart';
+import 'pages/home_page.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+void main() {
   runApp(const StudentExpenseAI());
 }
 
@@ -25,7 +19,7 @@ class StudentExpenseAI extends StatelessWidget {
           seedColor: const Color.fromARGB(255, 137, 183, 58),
         ),
       ),
-      home: const LoginPage(),
+      home: const HomePage(),
     );
   }
 }
