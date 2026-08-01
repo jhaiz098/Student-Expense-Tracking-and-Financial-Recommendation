@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav.dart';
 import '../database/database_helper.dart';
 import 'add_transaction_modal.dart';
+import 'package:intl/intl.dart';
+import '../utils/currency_helper.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,18 +15,47 @@ class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
   List<Map<String, dynamic>> recentTransactions = [];
   double monthlyBudget = 0;
+  double monthlyExpenses = 0;
+  String currentMonth = DateFormat('MMMM').format(DateTime.now());
 
   @override
   void initState() {
     super.initState();
     loadBudget();
+    loadExpenses();
     loadTransactions();
   }
 
+  // @override
+  // void didUpdateWidget(covariant HomePage oldWidget) {
+  //   super.didUpdateWidget(oldWidget);
+  //   refresh();
+  // }
+
   Future<void> refresh() async {
-    // await loadExpenses();
     await loadBudget();
+    await loadExpenses();
     await loadTransactions();
+  }
+
+  Future<void> loadExpenses() async {
+    final expenses = await DatabaseHelper.instance.getExpenses();
+
+    final now = DateTime.now();
+
+    double total = 0;
+
+    for (var expense in expenses) {
+      DateTime date = DateTime.parse(expense["createdAt"]);
+
+      if (date.month == now.month && date.year == now.year) {
+        total += expense["amount"];
+      }
+    }
+
+    setState(() {
+      monthlyExpenses = total;
+    });
   }
 
   Future<void> loadTransactions() async {
@@ -45,8 +75,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget build(BuildContext context) {
+    double budgetUsage = monthlyBudget == 0
+        ? 0
+        : monthlyExpenses / monthlyBudget;
+
+    final int budgetPercentage = (budgetUsage * 100).floor();
+
+    Color getBudgetColor() {
+      if (budgetPercentage >= 85) {
+        return Colors.red;
+      } else if (budgetPercentage >= 60) {
+        return Colors.orange;
+      } else {
+        return Colors.green;
+      }
+    }
+
     return Scaffold(
-      // appBar: AppBar(title: const Text("Home")),
+      appBar: AppBar(title: const Text("Home"), centerTitle: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -63,27 +109,38 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Monthly Budget",
+                  const Text(
+                    "Remaining Budget",
                     style: TextStyle(color: Colors.white70, fontSize: 16),
                   ),
 
-                  SizedBox(height: 10),
+                  const SizedBox(height: 8),
 
                   Text(
-                    "₱${monthlyBudget.toStringAsFixed(2)}",
-                    style: TextStyle(
+                    CurrencyHelper.format(monthlyBudget - monthlyExpenses),
+                    style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 32,
+                      fontSize: 36,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
 
-                  SizedBox(height: 5),
+                  const SizedBox(height: 20),
 
-                  Text(
-                    "Remaining: ₱2,800",
-                    style: TextStyle(color: Colors.white),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "$currentMonth Budget\n${CurrencyHelper.format(monthlyBudget)}",
+                        style: const TextStyle(color: Colors.white),
+                      ),
+
+                      Text(
+                        "Spent\n${CurrencyHelper.format(monthlyExpenses)}",
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -91,17 +148,72 @@ class _HomePageState extends State<HomePage> {
 
             const SizedBox(height: 20),
 
-            // Summary cards
-            Row(
-              children: [
-                Expanded(
-                  child: _summaryCard("Spent", "₱2,200", Icons.money_off),
-                ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: Colors.white,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.pie_chart, color: Colors.deepPurple, size: 20),
 
-                const SizedBox(width: 15),
+                      const SizedBox(width: 8),
 
-                Expanded(child: _summaryCard("Savings", "₱600", Icons.savings)),
-              ],
+                      const Text(
+                        "Budget Usage",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "$budgetPercentage%",
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      Text(
+                        "${CurrencyHelper.format(monthlyExpenses)} / ${CurrencyHelper.format(monthlyBudget)}",
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: budgetUsage.clamp(0, 1),
+                      minHeight: 8,
+                      backgroundColor: Colors.grey.shade200,
+                      color: budgetUsage >= 0.85
+                          ? Colors.red
+                          : budgetUsage >= 0.60
+                          ? Colors.orange
+                          : Colors.green,
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 30),
@@ -121,24 +233,12 @@ class _HomePageState extends State<HomePage> {
                 isExpense ? Icons.receipt_long : Icons.account_balance_wallet,
                 transaction["category"] ?? "Unknown",
                 transaction["note"] ?? "No description",
-                "₱${transaction["amount"].toStringAsFixed(2)}",
+                "${CurrencyHelper.getSymbol()}${transaction["amount"].toStringAsFixed(2)}",
                 isExpense,
               );
             }).toList(),
           ],
         ),
-      ),
-
-      bottomNavigationBar: BottomNav(
-        currentIndex: currentIndex,
-
-        onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
-        },
-
-        onTransactionAdded: refresh,
       ),
     );
   }
@@ -195,6 +295,7 @@ class _HomePageState extends State<HomePage> {
     bool isExpense,
   ) {
     return Card(
+      color: Colors.white,
       child: ListTile(
         contentPadding: const EdgeInsets.only(left: 16, right: 4),
 
@@ -202,7 +303,7 @@ class _HomePageState extends State<HomePage> {
 
         title: Text(category),
 
-        subtitle: Text(subtitle),
+        subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
 
         trailing: Row(
           mainAxisSize: MainAxisSize.min,

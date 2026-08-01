@@ -66,7 +66,108 @@ class DatabaseHelper {
       );
     ''');
 
+    await db.execute('''
+      CREATE TABLE settings(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        currency TEXT NOT NULL,
+        theme TEXT NOT NULL,
+        budgetReminder INTEGER NOT NULL DEFAULT 80,
+        aiRecommendation INTEGER NOT NULL
+      );
+    ''');
+
+    await db.insert('settings', {
+      "currency": "PHP",
+      "theme": "System",
+      "budgetReminder": 1,
+      "aiRecommendation": 1,
+    });
+
     await insertDefaultCategories(db);
+  }
+
+  Future<int> getBudgetReminder() async {
+    final db = await database;
+
+    final result = await db.query("settings", where: "id = ?", whereArgs: [1]);
+
+    if (result.isEmpty) return 80;
+
+    return result.first["budgetReminder"] as int;
+  }
+
+  Future<void> updateBudgetReminder(int value) async {
+    final db = await database;
+
+    await db.update(
+      "settings",
+      {"budgetReminder": value},
+      where: "id = ?",
+      whereArgs: [1],
+    );
+  }
+
+  Future<Map<String, dynamic>> getSettings() async {
+    final db = await database;
+
+    final result = await db.query("settings", where: "id = ?", whereArgs: [1]);
+
+    if (result.isEmpty) {
+      return {"currency": "PHP", "theme": "Light"};
+    }
+
+    String theme = result.first["theme"]?.toString() ?? "Light";
+
+    if (theme != "System" && theme != "Light" && theme != "Dark") {
+      theme = "System";
+    }
+
+    return {
+      "currency": result.first["currency"]?.toString() ?? "PHP",
+      "theme": theme,
+      "budgetReminder": result.first["budgetReminder"] ?? 80,
+    };
+  }
+
+  Future<void> updateCurrency(String currency) async {
+    final db = await database;
+
+    await db.update(
+      "settings",
+      {"currency": currency},
+      where: "id = ?",
+      whereArgs: [1],
+    );
+  }
+
+  Future<void> updateTheme(String theme) async {
+    final db = await database;
+
+    // Get current theme first
+    final oldData = await db.query("settings", where: "id = ?", whereArgs: [1]);
+
+    print("Old theme: ${oldData.first["theme"]}");
+
+    // Update theme
+    await db.update(
+      "settings",
+      {"theme": theme},
+      where: "id = ?",
+      whereArgs: [1],
+    );
+
+    // Check new theme
+    final newData = await db.query("settings", where: "id = ?", whereArgs: [1]);
+
+    print("New theme: ${newData.first["theme"]}");
+  }
+
+  Future<String> getTheme() async {
+    final db = await database;
+
+    final result = await db.query("settings", where: "id = ?", whereArgs: [1]);
+
+    return result.first["theme"]?.toString() ?? "Light";
   }
 
   Future<void> insertDefaultCategories(Database db) async {
@@ -193,6 +294,24 @@ class DatabaseHelper {
     );
 
     return result.first['total'] == null ? 0 : result.first['total'] as double;
+  }
+
+  Future<List<Map<String, dynamic>>> getExpensesWithCategory() async {
+    final db = await database;
+
+    return await db.rawQuery('''
+    SELECT 
+      expenses.id,
+      expenses.amount,
+      expenses.note,
+      expenses.createdAt,
+      expenses.categoryId,
+      expense_categories.name AS category
+    FROM expenses
+    INNER JOIN expense_categories
+    ON expenses.categoryId = expense_categories.id
+    ORDER BY expenses.createdAt DESC
+  ''');
   }
 
   Future<List<Map<String, dynamic>>> getRecentTransactions() async {
