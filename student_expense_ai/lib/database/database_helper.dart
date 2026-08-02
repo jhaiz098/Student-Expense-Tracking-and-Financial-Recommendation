@@ -79,11 +79,19 @@ class DatabaseHelper {
     await db.insert('settings', {
       "currency": "PHP",
       "theme": "System",
-      "budgetReminder": 1,
+      "budgetReminder": 80,
       "aiRecommendation": 1,
     });
 
     await insertDefaultCategories(db);
+  }
+
+  Future<void> clearAllData() async {
+    final db = await database;
+
+    await db.delete("expenses");
+
+    await db.delete("budgets");
   }
 
   Future<int> getBudgetReminder() async {

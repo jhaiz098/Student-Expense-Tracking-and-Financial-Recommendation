@@ -13,11 +13,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
+  int budgetReminder = 80;
   List<Map<String, dynamic>> recentTransactions = [];
   double monthlyBudget = 0;
   double monthlyExpenses = 0;
   String currentMonth = DateFormat('MMMM').format(DateTime.now());
-
   @override
   void initState() {
     super.initState();
@@ -69,9 +69,18 @@ class _HomePageState extends State<HomePage> {
   Future<void> loadBudget() async {
     final budget = await DatabaseHelper.instance.getCurrentMonthBudget();
 
+    final reminder = await DatabaseHelper.instance.getBudgetReminder();
+
     setState(() {
       monthlyBudget = budget;
+      budgetReminder = reminder;
     });
+  }
+
+  double getBudgetPercentage() {
+    if (monthlyBudget == 0) return 0;
+
+    return (monthlyExpenses / monthlyBudget) * 100;
   }
 
   Widget build(BuildContext context) {
@@ -205,13 +214,49 @@ class _HomePageState extends State<HomePage> {
                       value: budgetUsage.clamp(0, 1),
                       minHeight: 8,
                       backgroundColor: Colors.grey.shade200,
-                      color: budgetUsage >= 0.85
+                      color: budgetPercentage >= budgetReminder
                           ? Colors.red
-                          : budgetUsage >= 0.60
+                          : budgetPercentage >= (budgetReminder - 20)
                           ? Colors.orange
                           : Colors.green,
                     ),
                   ),
+                  const SizedBox(height: 12),
+
+                  if (getBudgetPercentage() >= budgetReminder)
+                    Container(
+                      width: double.infinity,
+
+                      padding: const EdgeInsets.all(12),
+
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.red.shade700,
+                          ),
+
+                          const SizedBox(width: 10),
+
+                          Expanded(
+                            child: Text(
+                              "Budget Warning\n"
+                              "You have used ${getBudgetPercentage().toStringAsFixed(0)}% "
+                              "of your monthly budget.",
+                              style: TextStyle(
+                                color: Colors.red.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

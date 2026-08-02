@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'home_page.dart';
 import 'analytics_page.dart';
-// import 'insights_page.dart';
+import 'advisor_page.dart';
 import 'settings_page.dart';
 import '../widgets/bottom_nav.dart';
 
@@ -29,6 +29,7 @@ class _MainPageState extends State<MainPage> {
     final pages = [
       HomePage(key: ValueKey(refreshKey)),
       AnalyticsPage(key: ValueKey(refreshKey)),
+      AdvisorPage(key: ValueKey(refreshKey)),
       SettingsPage(key: ValueKey(refreshKey)),
     ];
 

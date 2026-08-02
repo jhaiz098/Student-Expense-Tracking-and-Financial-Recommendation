@@ -39,7 +39,7 @@ class BottomNav extends StatelessWidget {
               NavigationDestination(
                 icon: Icon(Icons.smart_toy_outlined),
                 selectedIcon: Icon(Icons.smart_toy),
-                label: "Insights",
+                label: "Advisor",
               ),
               NavigationDestination(
                 icon: Icon(Icons.settings),
