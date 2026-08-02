@@ -322,6 +322,50 @@ class DatabaseHelper {
   ''');
   }
 
+  Future<List<Map<String, dynamic>>> getAllTransactions() async {
+    final db = await database;
+
+    final expenses = await db.rawQuery('''
+    SELECT 
+      expenses.id,
+      expenses.amount,
+      expenses.note,
+      expenses.createdAt,
+      expenses.categoryId,
+      expense_categories.name AS category,
+      expense_categories.icon AS icon,
+      'Expense' AS type
+    FROM expenses
+
+    INNER JOIN expense_categories
+    ON expenses.categoryId = expense_categories.id
+  ''');
+
+    final budgets = await db.rawQuery('''
+    SELECT 
+      budgets.id,
+      budgets.amount,
+      budgets.note,
+      budgets.createdAt,
+      budgets.categoryId,
+      budget_categories.name AS category,
+      budget_categories.icon AS icon,
+      'Budget' AS type
+    FROM budgets
+
+    INNER JOIN budget_categories
+    ON budgets.categoryId = budget_categories.id
+  ''');
+
+    final transactions = [...expenses, ...budgets];
+
+    transactions.sort(
+      (a, b) => b["createdAt"].toString().compareTo(a["createdAt"].toString()),
+    );
+
+    return transactions;
+  }
+
   Future<List<Map<String, dynamic>>> getRecentTransactions() async {
     final db = await database;
 
@@ -378,5 +422,298 @@ class DatabaseHelper {
     );
 
     return transactions.take(5).toList();
+  }
+
+  Future<double> getCurrentBudgetAmount() async {
+    final db = await database;
+
+    final now = DateTime.now();
+
+    final startOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
+
+    final endOfMonth = DateTime(now.year, now.month + 1, 1).toIso8601String();
+
+    final result = await db.rawQuery(
+      '''
+    SELECT SUM(amount) as total
+    FROM budgets
+    WHERE createdAt >= ?
+    AND createdAt < ?
+    ''',
+      [startOfMonth, endOfMonth],
+    );
+
+    if (result.first["total"] == null) {
+      return 0;
+    }
+
+    return (result.first["total"] as num).toDouble();
+  }
+
+  Future<double> getPreviousMonthBudgetAmount() async {
+    final db = await database;
+
+    final now = DateTime.now();
+
+    final startOfPreviousMonth = DateTime(
+      now.year,
+      now.month - 1,
+      1,
+    ).toIso8601String();
+
+    final startOfCurrentMonth = DateTime(
+      now.year,
+      now.month,
+      1,
+    ).toIso8601String();
+
+    final result = await db.rawQuery(
+      '''
+    SELECT SUM(amount) as total
+    FROM budgets
+    WHERE createdAt >= ?
+    AND createdAt < ?
+    ''',
+      [startOfPreviousMonth, startOfCurrentMonth],
+    );
+
+    if (result.first["total"] == null) {
+      return 0;
+    }
+
+    return (result.first["total"] as num).toDouble();
+  }
+
+  Future<double> getCurrentExpenseAmount() async {
+    final db = await database;
+
+    final now = DateTime.now();
+
+    final startOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
+
+    final endOfMonth = DateTime(now.year, now.month + 1, 1).toIso8601String();
+
+    final result = await db.rawQuery(
+      '''
+    SELECT SUM(amount) as total
+    FROM expenses
+    WHERE createdAt >= ?
+    AND createdAt < ?
+    ''',
+      [startOfMonth, endOfMonth],
+    );
+
+    if (result.first["total"] == null) {
+      return 0;
+    }
+
+    return (result.first["total"] as num).toDouble();
+  }
+
+  Future<double> getPreviousMonthExpenseAmount() async {
+    final db = await database;
+
+    final now = DateTime.now();
+
+    final startOfPreviousMonth = DateTime(
+      now.year,
+      now.month - 1,
+      1,
+    ).toIso8601String();
+
+    final startOfCurrentMonth = DateTime(
+      now.year,
+      now.month,
+      1,
+    ).toIso8601String();
+
+    final result = await db.rawQuery(
+      '''
+    SELECT SUM(amount) as total
+    FROM expenses
+    WHERE createdAt >= ?
+    AND createdAt < ?
+    ''',
+      [startOfPreviousMonth, startOfCurrentMonth],
+    );
+
+    if (result.first["total"] == null) {
+      return 0;
+    }
+
+    return (result.first["total"] as num).toDouble();
+  }
+
+  Future<int> getExpenseTransactionCount({bool previousMonth = false}) async {
+    final db = await database;
+
+    final now = DateTime.now();
+
+    late DateTime startDate;
+    late DateTime endDate;
+
+    if (previousMonth) {
+      startDate = DateTime(now.year, now.month - 1, 1);
+
+      endDate = DateTime(now.year, now.month, 1);
+    } else {
+      startDate = DateTime(now.year, now.month, 1);
+
+      endDate = DateTime(now.year, now.month + 1, 1);
+    }
+
+    final result = await db.rawQuery(
+      '''
+    SELECT COUNT(*) as total
+    FROM expenses
+    WHERE createdAt >= ?
+    AND createdAt < ?
+    ''',
+      [startDate.toIso8601String(), endDate.toIso8601String()],
+    );
+
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<Map<String, double>> getCategorySpending({
+    bool previousMonth = false,
+  }) async {
+    final db = await database;
+
+    final now = DateTime.now();
+
+    late DateTime startDate;
+    late DateTime endDate;
+
+    if (previousMonth) {
+      startDate = DateTime(now.year, now.month - 1, 1);
+
+      endDate = DateTime(now.year, now.month, 1);
+    } else {
+      startDate = DateTime(now.year, now.month, 1);
+
+      endDate = DateTime(now.year, now.month + 1, 1);
+    }
+
+    final result = await db.rawQuery(
+      '''
+    SELECT 
+      expense_categories.name AS category,
+      SUM(expenses.amount) AS total
+    FROM expenses
+
+    INNER JOIN expense_categories
+    ON expenses.categoryId = expense_categories.id
+
+    WHERE expenses.createdAt >= ?
+    AND expenses.createdAt < ?
+
+    GROUP BY expense_categories.name
+    ''',
+      [startDate.toIso8601String(), endDate.toIso8601String()],
+    );
+
+    Map<String, double> categories = {};
+
+    for (var row in result) {
+      categories[row["category"].toString()] = (row["total"] as num).toDouble();
+    }
+
+    return categories;
+  }
+
+  Future<Map<String, dynamic>> getSpendingPatterns() async {
+    final current = await getCategorySpending();
+
+    final previous = await getCategorySpending(previousMonth: true);
+
+    String? highestCategory;
+    double highestAmount = 0;
+
+    String? largestIncreaseCategory;
+    double largestIncrease = 0;
+
+    for (var category in current.keys) {
+      final currentAmount = current[category] ?? 0;
+
+      final previousAmount = previous[category] ?? 0;
+
+      // Highest current spending
+      if (currentAmount > highestAmount) {
+        highestAmount = currentAmount;
+        highestCategory = category;
+      }
+
+      // Biggest increase
+      final increase = currentAmount - previousAmount;
+
+      if (increase > largestIncrease) {
+        largestIncrease = increase;
+        largestIncreaseCategory = category;
+      }
+    }
+
+    return {
+      "highest_current_month_spending_category": highestCategory,
+      "highest_current_month_spending_amount": highestAmount,
+
+      "biggest_month_to_month_increase_category": largestIncreaseCategory,
+      "biggest_month_to_month_increase_amount": largestIncrease,
+    };
+  }
+
+  Future<Map<String, dynamic>> getAdvisorData() async {
+    final budget = await getCurrentMonthBudget();
+    final spent = await getCurrentExpenseAmount();
+
+    final previousBudget = await getPreviousMonthBudgetAmount();
+    final previousSpent = await getPreviousMonthExpenseAmount();
+
+    final remaining = budget - spent;
+
+    final daysRemaining = DateTime(
+      DateTime.now().year,
+      DateTime.now().month + 1,
+      1,
+    ).difference(DateTime.now()).inDays;
+
+    final transactions = await getExpenseTransactionCount();
+
+    final currentCategories = await getCategorySpending();
+
+    final previousCategories = await getCategorySpending(previousMonth: true);
+
+    final patterns = await getSpendingPatterns();
+
+    return {
+      "budget": {
+        "current_month_budget": budget,
+
+        "current_month_spent": spent,
+
+        "remaining_budget": remaining,
+
+        "days_remaining": daysRemaining,
+      },
+
+      "previous_budget_information": {
+        "previous_month_budget_amount": previousBudget,
+
+        "previous_month_expense_amount": previousSpent,
+
+        "previous_month_remaining_budget_amount":
+            previousBudget - previousSpent,
+      },
+
+      "expense_summary": {"total_transactions": transactions},
+
+      "categories": {
+        "current_month": currentCategories,
+
+        "previous_month": previousCategories,
+      },
+
+      "patterns": patterns,
+    };
   }
 }

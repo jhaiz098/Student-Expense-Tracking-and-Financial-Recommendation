@@ -3,6 +3,8 @@ import '../database/database_helper.dart';
 import 'add_transaction_modal.dart';
 import 'package:intl/intl.dart';
 import '../utils/currency_helper.dart';
+import 'package:student_expense_ai/pages/transactions_page.dart';
+import '../widgets/transaction_tile.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -273,15 +275,53 @@ class _HomePageState extends State<HomePage> {
             ...recentTransactions.map((transaction) {
               bool isExpense = transaction["type"] == "Expense";
 
-              return _transactionTile(
-                transaction,
-                isExpense ? Icons.receipt_long : Icons.account_balance_wallet,
-                transaction["category"] ?? "Unknown",
-                transaction["note"] ?? "No description",
-                "${CurrencyHelper.getSymbol()}${transaction["amount"].toStringAsFixed(2)}",
-                isExpense,
+              return TransactionTile(
+                transaction: transaction,
+
+                icon: isExpense
+                    ? Icons.receipt_long
+                    : Icons.account_balance_wallet,
+
+                category: transaction["category"] ?? "Unknown",
+
+                subtitle: transaction["note"] ?? "No description",
+
+                amount:
+                    "${CurrencyHelper.getSymbol()}${transaction["amount"].toStringAsFixed(2)}",
+
+                isExpense: isExpense,
+
+                onDelete: () async {
+                  await _deleteTransaction(transaction);
+                  refresh();
+                },
+
+                onTap: () async {
+                  final result = await showAddModal(
+                    context,
+                    transaction: transaction,
+                  );
+
+                  if (result == true) {
+                    refresh();
+                  }
+                },
               );
             }).toList(),
+            TextButton(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TransactionsPage(),
+                  ),
+                );
+
+                refresh();
+              },
+
+              child: const Text("See All Transactions →"),
+            ),
           ],
         ),
       ),
@@ -329,90 +369,5 @@ class _HomePageState extends State<HomePage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Transaction deleted")));
-  }
-
-  Widget _transactionTile(
-    Map<String, dynamic> transaction,
-    IconData icon,
-    String category,
-    String subtitle,
-    String amount,
-    bool isExpense,
-  ) {
-    return Card(
-      color: Colors.white,
-      child: ListTile(
-        contentPadding: const EdgeInsets.only(left: 16, right: 4),
-
-        leading: CircleAvatar(child: Icon(icon)),
-
-        title: Text(category),
-
-        subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "${isExpense ? '-' : '+'} $amount",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isExpense ? Colors.red : Colors.green,
-              ),
-            ),
-
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: const Text("Delete Transaction?"),
-                      content: const Text(
-                        "Are you sure you want to delete this transaction?",
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context, false);
-                          },
-                          child: const Text("Cancel"),
-                        ),
-
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context, true);
-                          },
-                          child: const Text(
-                            "Delete",
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                );
-
-                if (confirm == true) {
-                  await _deleteTransaction(transaction);
-                  refresh();
-                }
-              },
-            ),
-          ],
-        ),
-
-        onTap: () async {
-          final result = await showAddModal(context, transaction: transaction);
-
-          if (result == true) {
-            refresh();
-          }
-        },
-      ),
-    );
   }
 }

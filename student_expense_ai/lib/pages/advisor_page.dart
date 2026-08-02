@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../database/database_helper.dart';
 
 class AdvisorPage extends StatefulWidget {
   const AdvisorPage({super.key});
@@ -28,11 +29,102 @@ class _AdvisorPageState extends State<AdvisorPage> {
     connectivitySubscription = Connectivity().onConnectivityChanged.listen((
       result,
     ) {
-      print("Network changed: $result");
+      //TESTTTT OUTPUT
+      // testRemainingBudget();
+      // testRemainingDays();
+      // testPreviousMonthExpense();
+      // testTransactionCount();
+      // testCategorySpending();
+      // testPatterns();
+      // test();
+
+      testAdvisorData();
+      //TESTT OUTPUT
 
       checkInternet();
     });
   }
+
+  //TESTTTTT FUNCTIONS
+  void test() async {
+    final previousBudget = await DatabaseHelper.instance
+        .getPreviousMonthBudgetAmount();
+
+    print("Previous Budget: $previousBudget");
+  }
+
+  void testAdvisorData() async {
+    final data = await DatabaseHelper.instance.getAdvisorData();
+
+    print(data);
+  }
+
+  void testPatterns() async {
+    final patterns = await DatabaseHelper.instance.getSpendingPatterns();
+
+    print(patterns);
+  }
+
+  void testCategorySpending() async {
+    final current = await DatabaseHelper.instance.getCategorySpending();
+
+    final previous = await DatabaseHelper.instance.getCategorySpending(
+      previousMonth: true,
+    );
+
+    print("CURRENT CATEGORY:");
+    print(current);
+
+    print("PREVIOUS CATEGORY:");
+    print(previous);
+  }
+
+  void testTransactionCount() async {
+    final current = await DatabaseHelper.instance.getExpenseTransactionCount();
+
+    final previous = await DatabaseHelper.instance.getExpenseTransactionCount(
+      previousMonth: true,
+    );
+
+    print("CURRENT MONTH EXPENSE TRANSACTIONS COUNT: $current");
+    print("PREVIOUS MONTH EXPENSE TRANSACTIONS COUNT: $previous");
+  }
+
+  void testPreviousMonthExpense() async {
+    final previousExpense = await DatabaseHelper.instance
+        .getPreviousMonthExpenseAmount();
+
+    print("PREVIOUS MONTH EXPENSE: $previousExpense");
+  }
+
+  void testRemainingDays() {
+    final days = getRemainingDays();
+
+    print("REMAINING DAYS: $days");
+  }
+
+  int getRemainingDays() {
+    final now = DateTime.now();
+
+    final today = DateTime(now.year, now.month, now.day);
+
+    final lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
+
+    return lastDayOfMonth.difference(today).inDays;
+  }
+
+  void testRemainingBudget() async {
+    final budget = await DatabaseHelper.instance.getCurrentBudgetAmount();
+
+    final expenses = await DatabaseHelper.instance.getCurrentExpenseAmount();
+
+    final remaining = budget - expenses;
+
+    print("CURRENT BUDGET: $budget");
+    print("CURRENT EXPENSE: $expenses");
+    print("REMAINING BUDGET: $remaining");
+  }
+  //TESTTTT FUNCTIONS
 
   Future<void> checkInternet() async {
     try {
