@@ -1,6 +1,7 @@
+import 'dart:async';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
-import '../utils/currency_helper.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class AdvisorPage extends StatefulWidget {
   const AdvisorPage({super.key});
@@ -10,97 +11,124 @@ class AdvisorPage extends StatefulWidget {
 }
 
 class _AdvisorPageState extends State<AdvisorPage> {
-  double monthlyBudget = 0;
-  double monthlyExpenses = 0;
+  String advice =
+      "Generate AI advice to receive personalized recommendations "
+      "based on your spending habits.";
 
-  String highestCategory = "None";
-  double highestAmount = 0;
+  bool hasInternet = false;
 
-  String advice = "";
+  StreamSubscription? connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
-    loadAdvisorData();
+
+    checkInternet();
+
+    connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      result,
+    ) {
+      print("Network changed: $result");
+
+      checkInternet();
+    });
   }
 
-  Future<void> loadAdvisorData() async {
-    final budget = await DatabaseHelper.instance.getCurrentMonthBudget();
+  Future<void> checkInternet() async {
+    try {
+      final connectivity = await Connectivity().checkConnectivity();
 
-    final expenses = await DatabaseHelper.instance.getExpensesWithCategory();
+      if (connectivity.contains(ConnectivityResult.none)) {
+        setState(() {
+          hasInternet = false;
+        });
 
-    double totalExpense = 0;
-
-    Map<String, double> categories = {};
-
-    DateTime now = DateTime.now();
-
-    for (var expense in expenses) {
-      DateTime date = DateTime.parse(expense["createdAt"]);
-
-      if (date.month == now.month && date.year == now.year) {
-        double amount = expense["amount"].toDouble();
-
-        totalExpense += amount;
-
-        String category = expense["category"] ?? "Others";
-
-        categories[category] = (categories[category] ?? 0) + amount;
+        return;
       }
+
+      final response = await http
+          .get(Uri.parse("https://www.google.com"))
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        setState(() {
+          hasInternet = true;
+        });
+      } else {
+        setState(() {
+          hasInternet = false;
+        });
+      }
+    } catch (e) {
+      print("Internet check failed: $e");
+
+      setState(() {
+        hasInternet = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    connectivitySubscription?.cancel();
+
+    super.dispose();
+  }
+
+  void showAIConfirmation() {
+    if (!hasInternet) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Internet connection is required for AI advice."),
+        ),
+      );
+
+      return;
     }
 
-    String topCategory = "None";
-    double topAmount = 0;
+    showDialog(
+      context: context,
 
-    categories.forEach((key, value) {
-      if (value > topAmount) {
-        topCategory = key;
-        topAmount = value;
-      }
-    });
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Generate AI Advice?"),
 
-    double usage = budget == 0 ? 0 : totalExpense / budget;
+          content: const Text(
+            "AI advice can only be generated once every 7 days.\n\n"
+            "Your expense data will be analyzed to create "
+            "personalized financial recommendations.",
+          ),
 
-    String generatedAdvice;
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
 
-    if (budget == 0) {
-      generatedAdvice =
-          "Set a monthly budget first so I can help you manage your spending.";
-    } else if (usage >= 1) {
-      generatedAdvice =
-          "You have exceeded your monthly budget. "
-          "Try reducing unnecessary expenses.";
-    } else if (usage >= 0.85) {
-      generatedAdvice =
-          "You have used most of your budget. "
-          "Be careful with additional spending.";
-    } else if (usage >= 0.60) {
-      generatedAdvice =
-          "Your spending is increasing. "
-          "Monitor your expenses carefully.";
-    } else {
-      generatedAdvice = "Good job! Your spending is within a healthy range.";
-    }
+              child: const Text("Cancel"),
+            ),
 
-    setState(() {
-      monthlyBudget = budget;
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
 
-      monthlyExpenses = totalExpense;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("AI Advisor is not available yet."),
+                  ),
+                );
+              },
 
-      highestCategory = topCategory;
-
-      highestAmount = topAmount;
-
-      advice = generatedAdvice;
-    });
+              child: const Text("Generate"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    double usage = monthlyBudget == 0 ? 0 : monthlyExpenses / monthlyBudget;
-
-    int percentage = (usage * 100).floor();
-
     return Scaffold(
       appBar: AppBar(title: const Text("Advisor")),
 
@@ -126,13 +154,21 @@ class _AdvisorPageState extends State<AdvisorPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
-                  const Text(
-                    "Financial Advice",
+                  const Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: Colors.white),
 
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                      SizedBox(width: 8),
+
+                      Text(
+                        "AI Financial Advisor",
+
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 15),
 
                   Text(
                     advice,
@@ -149,10 +185,10 @@ class _AdvisorPageState extends State<AdvisorPage> {
               ),
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 30),
 
             const Text(
-              "Budget Health",
+              "AI Recommendation",
 
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
@@ -160,37 +196,55 @@ class _AdvisorPageState extends State<AdvisorPage> {
             const SizedBox(height: 10),
 
             Card(
-              child: ListTile(
-                leading: const Icon(Icons.account_balance_wallet),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
 
-                title: Text("$percentage% Used"),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
 
-                subtitle: Text(
-                  "${CurrencyHelper.format(monthlyExpenses)} / "
-                  "${CurrencyHelper.format(monthlyBudget)}",
-                ),
-              ),
-            ),
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          hasInternet ? Icons.cloud_done : Icons.cloud_off,
 
-            const SizedBox(height: 20),
+                          color: hasInternet ? Colors.green : Colors.red,
+                        ),
 
-            const Text(
-              "Spending Pattern",
+                        const SizedBox(width: 8),
 
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+                        Text(
+                          hasInternet
+                              ? "Internet Connected"
+                              : "No Internet Connection",
 
-            const SizedBox(height: 10),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
 
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.category),
+                    const SizedBox(height: 10),
 
-                title: Text(highestCategory),
+                    Text(
+                      hasInternet
+                          ? "AI advice can be generated once every 7 days."
+                          : "Connect to the internet to use AI Advisor.",
+                    ),
 
-                subtitle: Text(
-                  "Highest spending category: "
-                  "${CurrencyHelper.format(highestAmount)}",
+                    const SizedBox(height: 15),
+
+                    SizedBox(
+                      width: double.infinity,
+
+                      child: ElevatedButton.icon(
+                        onPressed: hasInternet ? showAIConfirmation : null,
+
+                        icon: const Icon(Icons.psychology),
+
+                        label: const Text("Generate AI Advice"),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
