@@ -53,7 +53,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     print("Previous Budget: $previousBudget");
   }
 
-  void testAdvisorData() async {
+  Future<void> testAdvisorData() async {
     final data = await DatabaseHelper.instance.getAdvisorData();
 
     print(data);
@@ -167,6 +167,11 @@ class _AdvisorPageState extends State<AdvisorPage> {
     super.dispose();
   }
 
+  Future<void> refresh() async {
+    await checkInternet();
+    await testAdvisorData();
+  }
+
   void showAIConfirmation() {
     if (!hasInternet) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -224,123 +229,129 @@ class _AdvisorPageState extends State<AdvisorPage> {
     return Scaffold(
       appBar: AppBar(title: const Text("Advisor")),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: RefreshIndicator(
+        onRefresh: refresh,
 
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
 
-          children: [
-            Container(
-              width: double.infinity,
+          padding: const EdgeInsets.all(20),
 
-              padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
 
-              decoration: BoxDecoration(
-                color: Colors.deepPurple,
+            children: [
+              Container(
+                width: double.infinity,
 
-                borderRadius: BorderRadius.circular(20),
-              ),
+                padding: const EdgeInsets.all(20),
 
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple,
 
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.auto_awesome, color: Colors.white),
-
-                      SizedBox(width: 8),
-
-                      Text(
-                        "AI Financial Advisor",
-
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  Text(
-                    advice,
-
-                    style: const TextStyle(
-                      color: Colors.white,
-
-                      fontSize: 18,
-
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            const Text(
-              "AI Recommendation",
-
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-
-            const SizedBox(height: 10),
-
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+                  borderRadius: BorderRadius.circular(20),
+                ),
 
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        Icon(
-                          hasInternet ? Icons.cloud_done : Icons.cloud_off,
+                        Icon(Icons.auto_awesome, color: Colors.white),
 
-                          color: hasInternet ? Colors.green : Colors.red,
-                        ),
-
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
 
                         Text(
-                          hasInternet
-                              ? "Internet Connected"
-                              : "No Internet Connection",
+                          "AI Financial Advisor",
 
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 10),
-
-                    Text(
-                      hasInternet
-                          ? "AI advice can be generated once every 7 days."
-                          : "Connect to the internet to use AI Advisor.",
-                    ),
-
                     const SizedBox(height: 15),
 
-                    SizedBox(
-                      width: double.infinity,
+                    Text(
+                      advice,
 
-                      child: ElevatedButton.icon(
-                        onPressed: hasInternet ? showAIConfirmation : null,
+                      style: const TextStyle(
+                        color: Colors.white,
 
-                        icon: const Icon(Icons.psychology),
+                        fontSize: 18,
 
-                        label: const Text("Generate AI Advice"),
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 30),
+
+              const Text(
+                "AI Recommendation",
+
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            hasInternet ? Icons.cloud_done : Icons.cloud_off,
+
+                            color: hasInternet ? Colors.green : Colors.red,
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          Text(
+                            hasInternet
+                                ? "Internet Connected"
+                                : "No Internet Connection",
+
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Text(
+                        hasInternet
+                            ? "AI advice can be generated once every 7 days."
+                            : "Connect to the internet to use AI Advisor.",
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      SizedBox(
+                        width: double.infinity,
+
+                        child: ElevatedButton.icon(
+                          onPressed: hasInternet ? showAIConfirmation : null,
+
+                          icon: const Icon(Icons.psychology),
+
+                          label: const Text("Generate AI Advice"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

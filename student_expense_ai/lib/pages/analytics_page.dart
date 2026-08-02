@@ -34,14 +34,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   Future<void> refresh() async {
     await loadAnalytics();
+    await loadTrendData();
   }
 
   Future<void> loadAnalytics() async {
     final data = await DatabaseHelper.instance.getExpensesWithCategory();
 
-    setState(() {
-      expenses = data;
-    });
+    expenses = data;
 
     calculateAnalytics();
   }
@@ -218,171 +217,182 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Scaffold(
       appBar: AppBar(title: const Text("Analytics"), centerTitle: false),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: RefreshIndicator(
+        onRefresh: refresh,
 
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
 
-          children: [
-            // Filter
-            Align(
-              alignment: Alignment.centerRight,
+          padding: const EdgeInsets.all(20),
 
-              child: DropdownButton<String>(
-                value: selectedPeriod,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
 
-                items: const [
-                  DropdownMenuItem(
-                    value: "This Month",
-                    child: Text("This Month"),
-                  ),
+            children: [
+              // Filter
+              Align(
+                alignment: Alignment.centerRight,
 
-                  DropdownMenuItem(
-                    value: "Past 3 Months",
-                    child: Text("Past 3 Months"),
-                  ),
+                child: DropdownButton<String>(
+                  value: selectedPeriod,
 
-                  DropdownMenuItem(
-                    value: "Past 12 Months",
-                    child: Text("Past 12 Months"),
-                  ),
-
-                  DropdownMenuItem(value: "All Time", child: Text("All Time")),
-                ],
-
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      selectedPeriod = value;
-                    });
-
-                    calculateAnalytics();
-                  }
-                },
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Highest Spending
-            Container(
-              width: double.infinity,
-
-              padding: const EdgeInsets.all(20),
-
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-
-                color: Colors.deepPurple,
-              ),
-
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-
-                children: [
-                  const Text(
-                    "Top Spending Category",
-
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  Text(
-                    highestCategory,
-
-                    style: const TextStyle(
-                      color: Colors.white,
-
-                      fontSize: 28,
-
-                      fontWeight: FontWeight.bold,
+                  items: const [
+                    DropdownMenuItem(
+                      value: "This Month",
+                      child: Text("This Month"),
                     ),
-                  ),
 
-                  const SizedBox(height: 5),
+                    DropdownMenuItem(
+                      value: "Past 3 Months",
+                      child: Text("Past 3 Months"),
+                    ),
 
-                  Text(
-                    CurrencyHelper.format(highestAmount),
+                    DropdownMenuItem(
+                      value: "Past 12 Months",
+                      child: Text("Past 12 Months"),
+                    ),
 
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                ],
+                    DropdownMenuItem(
+                      value: "All Time",
+                      child: Text("All Time"),
+                    ),
+                  ],
+
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        selectedPeriod = value;
+                      });
+
+                      calculateAnalytics();
+                    }
+                  },
+                ),
               ),
-            ),
 
-            const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
-            const Text(
-              "Spending by Category",
+              // Highest Spending
+              Container(
+                width: double.infinity,
 
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+                padding: const EdgeInsets.all(20),
 
-            const SizedBox(height: 15),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
 
-            if (categoryTotals.isEmpty)
-              const Text("No expenses found.")
-            else
-              ...categoryTotals.entries.map((entry) {
-                double percentage = totalExpenses == 0
-                    ? 0
-                    : entry.value / totalExpenses;
+                  color: Colors.deepPurple,
+                ),
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 15),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
 
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Top Spending Category",
 
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
 
-                        children: [
-                          Text(
-                            entry.key,
+                    const SizedBox(height: 10),
 
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                    Text(
+                      highestCategory,
 
-                          Text("${(percentage * 100).toStringAsFixed(0)}%"),
-                        ],
+                      style: const TextStyle(
+                        color: Colors.white,
+
+                        fontSize: 28,
+
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
 
-                      const SizedBox(height: 6),
+                    const SizedBox(height: 5),
 
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                    Text(
+                      CurrencyHelper.format(highestAmount),
 
-                        child: LinearProgressIndicator(
-                          value: percentage,
+                      style: const TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
 
-                          minHeight: 10,
+              const SizedBox(height: 30),
 
-                          backgroundColor: Colors.grey.shade200,
+              const Text(
+                "Spending by Category",
 
-                          color: getCategoryColor(percentage * 100),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 15),
+
+              if (categoryTotals.isEmpty)
+                const Text("No expenses found.")
+              else
+                ...categoryTotals.entries.map((entry) {
+                  double percentage = totalExpenses == 0
+                      ? 0
+                      : entry.value / totalExpenses;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 15),
+
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                          children: [
+                            Text(
+                              entry.key,
+
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+
+                            Text("${(percentage * 100).toStringAsFixed(0)}%"),
+                          ],
                         ),
-                      ),
 
-                      const SizedBox(height: 5),
+                        const SizedBox(height: 6),
 
-                      Text(
-                        CurrencyHelper.format(entry.value),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
 
-                        style: TextStyle(color: Colors.grey.shade700),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                          child: LinearProgressIndicator(
+                            value: percentage,
 
-            const SizedBox(height: 30),
+                            minHeight: 10,
 
-            budgetExpenseChart(),
-          ],
+                            backgroundColor: Colors.grey.shade200,
+
+                            color: getCategoryColor(percentage * 100),
+                          ),
+                        ),
+
+                        const SizedBox(height: 5),
+
+                        Text(
+                          CurrencyHelper.format(entry.value),
+
+                          style: TextStyle(color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+
+              const SizedBox(height: 30),
+
+              budgetExpenseChart(),
+            ],
+          ),
         ),
       ),
     );

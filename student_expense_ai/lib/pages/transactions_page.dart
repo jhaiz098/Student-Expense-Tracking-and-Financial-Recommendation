@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:student_expense_ai/database/database_helper.dart';
 import 'package:student_expense_ai/widgets/transaction_tile.dart';
 import 'package:student_expense_ai/utils/currency_helper.dart';
@@ -13,6 +14,7 @@ class TransactionsPage extends StatefulWidget {
 
 class _TransactionsPageState extends State<TransactionsPage> {
   List<Map<String, dynamic>> transactions = [];
+
   bool hasChanged = false;
 
   @override
@@ -24,6 +26,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   Future<void> loadTransactions() async {
     final data = await DatabaseHelper.instance.getAllTransactions();
+
+    if (!mounted) return;
 
     setState(() {
       transactions = data;
@@ -42,8 +46,46 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
+  Map<String, List<Map<String, dynamic>>> groupTransactionsByDate() {
+    Map<String, List<Map<String, dynamic>>> grouped = {};
+
+    for (var transaction in transactions) {
+      DateTime date = DateTime.parse(transaction["createdAt"]);
+
+      String title;
+
+      final now = DateTime.now();
+
+      if (date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day) {
+        title = "Today";
+      } else if (date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day - 1) {
+        title = "Yesterday";
+      } else {
+        title = DateFormat("MMMM d, yyyy").format(date);
+      }
+
+      if (!grouped.containsKey(title)) {
+        grouped[title] = [];
+      }
+
+      grouped[title]!.add(transaction);
+    }
+
+    return grouped;
+  }
+
+  String getCurrentMonthTitle() {
+    return DateFormat("MMMM yyyy").format(DateTime.now());
+  }
+
   @override
   Widget build(BuildContext context) {
+    final groupedTransactions = groupTransactionsByDate();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Transactions"),
@@ -57,60 +99,85 @@ class _TransactionsPageState extends State<TransactionsPage> {
         ),
       ),
 
-      body: ListView(
-        padding: const EdgeInsets.all(20),
+      body: RefreshIndicator(
+        onRefresh: loadTransactions,
 
-        children: [
-          const Text(
-            "August 2026",
+        child: ListView(
+          padding: const EdgeInsets.all(20),
 
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          children: [
+            Text(
+              getCurrentMonthTitle(),
 
-          const SizedBox(height: 20),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
 
-          ...transactions.map((transaction) {
-            final bool isExpense = transaction["type"] == "Expense";
+            const SizedBox(height: 20),
 
-            return TransactionTile(
-              transaction: transaction,
+            ...groupedTransactions.entries.map((entry) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
 
-              icon: isExpense
-                  ? Icons.receipt_long
-                  : Icons.account_balance_wallet,
+                children: [
+                  Text(
+                    entry.key,
 
-              category: transaction["category"] ?? "Unknown",
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
 
-              subtitle: transaction["note"] ?? "No description",
+                  const SizedBox(height: 10),
 
-              amount:
-                  "${CurrencyHelper.getSymbol()}${(transaction["amount"] as num).toDouble().toStringAsFixed(2)}",
+                  ...entry.value.map((transaction) {
+                    final bool isExpense = transaction["type"] == "Expense";
 
-              isExpense: isExpense,
+                    return TransactionTile(
+                      transaction: transaction,
 
-              onDelete: () async {
-                await deleteTransaction(transaction);
+                      icon: isExpense
+                          ? Icons.receipt_long
+                          : Icons.account_balance_wallet,
 
-                hasChanged = true;
+                      category: transaction["category"] ?? "Unknown",
 
-                refresh();
-              },
+                      subtitle: transaction["note"] ?? "No description",
 
-              onTap: () async {
-                final result = await showAddModal(
-                  context,
-                  transaction: transaction,
-                );
+                      amount:
+                          "${CurrencyHelper.getSymbol()}${(transaction["amount"] as num).toDouble().toStringAsFixed(2)}",
 
-                if (result == true) {
-                  hasChanged = true;
+                      isExpense: isExpense,
 
-                  refresh();
-                }
-              },
-            );
-          }).toList(),
-        ],
+                      onDelete: () async {
+                        await deleteTransaction(transaction);
+
+                        hasChanged = true;
+
+                        refresh();
+                      },
+
+                      onTap: () async {
+                        final result = await showAddModal(
+                          context,
+                          transaction: transaction,
+                        );
+
+                        if (result == true) {
+                          hasChanged = true;
+
+                          refresh();
+                        }
+                      },
+                    );
+                  }).toList(),
+
+                  const SizedBox(height: 20),
+                ],
+              );
+            }).toList(),
+          ],
+        ),
       ),
     );
   }

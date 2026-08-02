@@ -23,6 +23,10 @@ class _SettingsPageState extends State<SettingsPage> {
     loadSettings();
   }
 
+  Future<void> refresh() async {
+    await loadSettings();
+  }
+
   Future<void> clearData() async {
     await DatabaseHelper.instance.clearAllData();
 
@@ -66,183 +70,188 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       appBar: AppBar(title: const Text("Settings")),
 
-      body: ListView(
-        padding: const EdgeInsets.all(20),
+      body: RefreshIndicator(
+        onRefresh: refresh,
 
-        children: [
-          const Text(
-            "General",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
 
-          const SizedBox(height: 10),
-
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.currency_exchange),
-
-              title: const Text("Currency"),
-
-              subtitle: Text(currency),
-
-              trailing: DropdownButton<String>(
-                value: currency,
-
-                items: const [
-                  DropdownMenuItem(value: "PHP", child: Text("₱ PHP")),
-
-                  DropdownMenuItem(value: "USD", child: Text("\$ USD")),
-
-                  DropdownMenuItem(value: "EUR", child: Text("€ EUR")),
-                ],
-
-                onChanged: (value) {
-                  if (value != null) {
-                    changeCurrency(value);
-                  }
-                },
-              ),
+          children: [
+            const Text(
+              "General",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.palette),
 
-              title: const Text("Theme"),
+            const SizedBox(height: 10),
 
-              subtitle: Text(theme),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.currency_exchange),
 
-              trailing: DropdownButton<String>(
-                value: theme,
+                title: const Text("Currency"),
 
-                items: const [
-                  DropdownMenuItem(value: "System", child: Text("System")),
+                subtitle: Text(currency),
 
-                  DropdownMenuItem(value: "Light", child: Text("Light")),
+                trailing: DropdownButton<String>(
+                  value: currency,
 
-                  DropdownMenuItem(value: "Dark", child: Text("Dark")),
-                ],
+                  items: const [
+                    DropdownMenuItem(value: "PHP", child: Text("₱ PHP")),
 
-                onChanged: (value) {
-                  if (value != null) {
-                    changeTheme(value);
-                  }
-                },
-              ),
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.notifications_active),
+                    DropdownMenuItem(value: "USD", child: Text("\$ USD")),
 
-              title: const Text("Budget Reminder"),
+                    DropdownMenuItem(value: "EUR", child: Text("€ EUR")),
+                  ],
 
-              subtitle: Text(
-                "Notify me when spending reaches $budgetReminder% of budget",
-              ),
-
-              trailing: DropdownButton<int>(
-                value: budgetReminder,
-
-                items: const [
-                  DropdownMenuItem(value: 50, child: Text("50%")),
-                  DropdownMenuItem(value: 60, child: Text("60%")),
-                  DropdownMenuItem(value: 70, child: Text("70%")),
-                  DropdownMenuItem(value: 80, child: Text("80%")),
-                  DropdownMenuItem(value: 90, child: Text("90%")),
-                  DropdownMenuItem(value: 100, child: Text("100%")),
-                ],
-
-                onChanged: (value) async {
-                  if (value != null) {
-                    await DatabaseHelper.instance.updateBudgetReminder(value);
-
-                    setState(() {
-                      budgetReminder = value;
-                    });
-                  }
-                },
-              ),
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
-
-              title: const Text(
-                "Clear Data",
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+                  onChanged: (value) {
+                    if (value != null) {
+                      changeCurrency(value);
+                    }
+                  },
                 ),
               ),
+            ),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.palette),
 
-              subtitle: const Text("Delete all expenses and budgets"),
+                title: const Text("Theme"),
 
-              trailing: const Icon(Icons.arrow_forward_ios),
+                subtitle: Text(theme),
 
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
+                trailing: DropdownButton<String>(
+                  value: theme,
 
-                  builder: (context) {
-                    return AlertDialog(
-                      title: const Text("Clear All Data?"),
+                  items: const [
+                    DropdownMenuItem(value: "System", child: Text("System")),
 
-                      content: const Text(
-                        "This will permanently delete all expenses and budgets. "
-                        "Your settings will remain unchanged.",
-                      ),
+                    DropdownMenuItem(value: "Light", child: Text("Light")),
 
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context, false);
-                          },
+                    DropdownMenuItem(value: "Dark", child: Text("Dark")),
+                  ],
 
-                          child: const Text("Cancel"),
-                        ),
-
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context, true);
-                          },
-
-                          child: const Text(
-                            "Clear",
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    );
+                  onChanged: (value) {
+                    if (value != null) {
+                      changeTheme(value);
+                    }
                   },
-                );
-
-                if (confirm == true) {
-                  clearData();
-                }
-              },
+                ),
+              ),
             ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.notifications_active),
 
-              title: const Text("About"),
+                title: const Text("Budget Reminder"),
 
-              subtitle: const Text("Application information"),
+                subtitle: Text(
+                  "Notify me when spending reaches $budgetReminder% of budget",
+                ),
 
-              trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+                trailing: DropdownButton<int>(
+                  value: budgetReminder,
 
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AboutPage()),
-                );
-              },
+                  items: const [
+                    DropdownMenuItem(value: 50, child: Text("50%")),
+                    DropdownMenuItem(value: 60, child: Text("60%")),
+                    DropdownMenuItem(value: 70, child: Text("70%")),
+                    DropdownMenuItem(value: 80, child: Text("80%")),
+                    DropdownMenuItem(value: 90, child: Text("90%")),
+                    DropdownMenuItem(value: 100, child: Text("100%")),
+                  ],
+
+                  onChanged: (value) async {
+                    if (value != null) {
+                      await DatabaseHelper.instance.updateBudgetReminder(value);
+
+                      setState(() {
+                        budgetReminder = value;
+                      });
+                    }
+                  },
+                ),
+              ),
             ),
-          ),
-        ],
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+
+                title: const Text(
+                  "Clear Data",
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                subtitle: const Text("Delete all expenses and budgets"),
+
+                trailing: const Icon(Icons.arrow_forward_ios),
+
+                onTap: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text("Clear All Data?"),
+
+                        content: const Text(
+                          "This will permanently delete all expenses and budgets. "
+                          "Your settings will remain unchanged.",
+                        ),
+
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context, false);
+                            },
+
+                            child: const Text("Cancel"),
+                          ),
+
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context, true);
+                            },
+
+                            child: const Text(
+                              "Clear",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirm == true) {
+                    clearData();
+                  }
+                },
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.info),
+
+                title: const Text("About"),
+
+                subtitle: const Text("Application information"),
+
+                trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AboutPage()),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

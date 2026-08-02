@@ -104,225 +104,236 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Home"), centerTitle: false),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Budget Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: Colors.deepPurple,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Remaining Budget",
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
+      body: RefreshIndicator(
+        onRefresh: refresh,
 
-                  const SizedBox(height: 8),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
 
-                  Text(
-                    CurrencyHelper.format(monthlyBudget - monthlyExpenses),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
+          padding: const EdgeInsets.all(20),
+
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Budget Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.deepPurple,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Remaining Budget",
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
                     ),
-                  ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 8),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "$currentMonth Budget\n${CurrencyHelper.format(monthlyBudget)}",
-                        style: const TextStyle(color: Colors.white),
+                    Text(
+                      CurrencyHelper.format(monthlyBudget - monthlyExpenses),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
                       ),
-
-                      Text(
-                        "Spent\n${CurrencyHelper.format(monthlyExpenses)}",
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: Colors.white,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.pie_chart, color: Colors.deepPurple, size: 20),
-
-                      const SizedBox(width: 8),
-
-                      const Text(
-                        "Budget Usage",
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "$budgetPercentage%",
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      Text(
-                        "${CurrencyHelper.format(monthlyExpenses)} / ${CurrencyHelper.format(monthlyBudget)}",
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: budgetUsage.clamp(0, 1),
-                      minHeight: 8,
-                      backgroundColor: Colors.grey.shade200,
-                      color: budgetPercentage >= budgetReminder
-                          ? Colors.red
-                          : budgetPercentage >= (budgetReminder - 20)
-                          ? Colors.orange
-                          : Colors.green,
                     ),
-                  ),
-                  const SizedBox(height: 12),
 
-                  if (getBudgetPercentage() >= budgetReminder)
-                    Container(
-                      width: double.infinity,
+                    const SizedBox(height: 20),
 
-                      padding: const EdgeInsets.all(12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "$currentMonth Budget\n${CurrencyHelper.format(monthlyBudget)}",
+                          style: const TextStyle(color: Colors.white),
+                        ),
 
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                        Text(
+                          "Spent\n${CurrencyHelper.format(monthlyExpenses)}",
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
 
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.red.shade700,
+              const SizedBox(height: 20),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.pie_chart,
+                          color: Colors.deepPurple,
+                          size: 20,
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        const Text(
+                          "Budget Usage",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
                           ),
+                        ),
+                      ],
+                    ),
 
-                          const SizedBox(width: 10),
+                    const SizedBox(height: 10),
 
-                          Expanded(
-                            child: Text(
-                              "Budget Warning\n"
-                              "You have used ${getBudgetPercentage().toStringAsFixed(0)}% "
-                              "of your monthly budget.",
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "$budgetPercentage%",
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        Text(
+                          "${CurrencyHelper.format(monthlyExpenses)} / ${CurrencyHelper.format(monthlyBudget)}",
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: budgetUsage.clamp(0, 1),
+                        minHeight: 8,
+                        backgroundColor: Colors.grey.shade200,
+                        color: budgetPercentage >= budgetReminder
+                            ? Colors.red
+                            : budgetPercentage >= (budgetReminder - 20)
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (getBudgetPercentage() >= budgetReminder)
+                      Container(
+                        width: double.infinity,
+
+                        padding: const EdgeInsets.all(12),
+
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.red.shade700,
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            Expanded(
+                              child: Text(
+                                "Budget Warning\n"
+                                "You have used ${getBudgetPercentage().toStringAsFixed(0)}% "
+                                "of your monthly budget.",
+                                style: TextStyle(
+                                  color: Colors.red.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 30),
+              const SizedBox(height: 30),
 
-            const Text(
-              "Recent Transactions",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+              const Text(
+                "Recent Transactions",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
 
-            const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-            ...recentTransactions.map((transaction) {
-              bool isExpense = transaction["type"] == "Expense";
+              ...recentTransactions.map((transaction) {
+                bool isExpense = transaction["type"] == "Expense";
 
-              return TransactionTile(
-                transaction: transaction,
+                return TransactionTile(
+                  transaction: transaction,
 
-                icon: isExpense
-                    ? Icons.receipt_long
-                    : Icons.account_balance_wallet,
+                  icon: isExpense
+                      ? Icons.receipt_long
+                      : Icons.account_balance_wallet,
 
-                category: transaction["category"] ?? "Unknown",
+                  category: transaction["category"] ?? "Unknown",
 
-                subtitle: transaction["note"] ?? "No description",
+                  subtitle: transaction["note"] ?? "No description",
 
-                amount:
-                    "${CurrencyHelper.getSymbol()}${transaction["amount"].toStringAsFixed(2)}",
+                  amount:
+                      "${CurrencyHelper.getSymbol()}${transaction["amount"].toStringAsFixed(2)}",
 
-                isExpense: isExpense,
+                  isExpense: isExpense,
 
-                onDelete: () async {
-                  await _deleteTransaction(transaction);
+                  onDelete: () async {
+                    await _deleteTransaction(transaction);
+                    refresh();
+                  },
+
+                  onTap: () async {
+                    final result = await showAddModal(
+                      context,
+                      transaction: transaction,
+                    );
+
+                    if (result == true) {
+                      refresh();
+                    }
+                  },
+                );
+              }).toList(),
+              TextButton(
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TransactionsPage(),
+                    ),
+                  );
+
                   refresh();
                 },
 
-                onTap: () async {
-                  final result = await showAddModal(
-                    context,
-                    transaction: transaction,
-                  );
-
-                  if (result == true) {
-                    refresh();
-                  }
-                },
-              );
-            }).toList(),
-            TextButton(
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TransactionsPage(),
-                  ),
-                );
-
-                refresh();
-              },
-
-              child: const Text("See All Transactions →"),
-            ),
-          ],
+                child: const Text("See All Transactions →"),
+              ),
+            ],
+          ),
         ),
       ),
     );
