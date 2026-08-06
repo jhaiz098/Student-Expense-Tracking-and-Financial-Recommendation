@@ -180,19 +180,36 @@ class DatabaseHelper {
 
   Future<void> insertDefaultCategories(Database db) async {
     final expenseCategories = [
-      {"name": "Food", "icon": Icons.restaurant.codePoint},
-      {"name": "Transportation", "icon": Icons.directions_car.codePoint},
-      {"name": "School", "icon": Icons.school.codePoint},
-      {"name": "Bills", "icon": Icons.receipt_long.codePoint},
+      {"name": "Food & Meals", "icon": Icons.restaurant.codePoint},
+      {"name": "Snacks & Drinks", "icon": Icons.local_cafe.codePoint},
+      {"name": "Transportation", "icon": Icons.directions_bus.codePoint},
+      {"name": "School & Education", "icon": Icons.school.codePoint},
+      {"name": "Work Expenses", "icon": Icons.work.codePoint},
+      {"name": "Mobile Load & Internet", "icon": Icons.wifi.codePoint},
       {"name": "Entertainment", "icon": Icons.movie.codePoint},
+      {
+        "name": "Personal Care & Shopping",
+        "icon": Icons.shopping_bag.codePoint,
+      },
+      {"name": "Health & Medicine", "icon": Icons.medical_services.codePoint},
       {"name": "Others", "icon": Icons.more_horiz.codePoint},
     ];
 
     final budgetCategories = [
-      {"name": "Monthly Budget", "icon": Icons.calendar_month.codePoint},
-      {"name": "Weekly Budget", "icon": Icons.date_range.codePoint},
+      {
+        "name": "Salary / Income",
+        "icon": Icons.account_balance_wallet.codePoint,
+      },
+      {"name": "Allowance", "icon": Icons.payments.codePoint},
+      {"name": "Scholarship", "icon": Icons.school.codePoint},
+      {"name": "Part-time Income", "icon": Icons.work_outline.codePoint},
       {"name": "Savings", "icon": Icons.savings.codePoint},
       {"name": "Emergency Fund", "icon": Icons.health_and_safety.codePoint},
+      {
+        "name": "Gift / Financial Support",
+        "icon": Icons.card_giftcard.codePoint,
+      },
+      {"name": "Others", "icon": Icons.more_horiz.codePoint},
     ];
 
     for (var category in expenseCategories) {

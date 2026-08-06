@@ -139,6 +139,7 @@ class _AddModalPageState extends State<AddModalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(
           widget.transaction == null ? "Add Transaction" : "Edit Transaction",
@@ -163,7 +164,7 @@ class _AddModalPageState extends State<AddModalPage> {
         ],
       ),
 
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,18 +243,41 @@ class _AddModalPageState extends State<AddModalPage> {
             const SizedBox(height: 10),
 
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 8,
+              runSpacing: 4,
               children: categories.map((category) {
                 return ChoiceChip(
-                  avatar: Icon(category.icon, size: 18),
-                  label: Text(category.name),
+                  avatar: Icon(category.icon, size: 15),
+
+                  label: Text(
+                    category.name,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+
                   selected: selectedCategory?.id == category.id,
+
+                  checkmarkColor: const Color.fromARGB(255, 255, 0, 200),
+
                   onSelected: (selected) {
                     setState(() {
                       selectedCategory = selected ? category : null;
                     });
                   },
+
+                  visualDensity: const VisualDensity(
+                    horizontal: -2,
+                    vertical: -2,
+                  ),
+
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+
+                  padding: EdgeInsets.zero,
+
+                  avatarBorder: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  ),
                 );
               }).toList(),
             ),
