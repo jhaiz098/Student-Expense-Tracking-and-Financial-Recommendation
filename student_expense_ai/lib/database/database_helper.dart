@@ -86,10 +86,145 @@ class DatabaseHelper {
     await insertDefaultCategories(db);
   }
 
+  Future<int> getCategoryTransactionCount(String type, int categoryId) async {
+    final db = await database;
+
+    final table = type == "Expense" ? "expenses" : "budgets";
+
+    final result = await db.rawQuery(
+      '''
+    SELECT COUNT(*) as count
+    FROM $table
+    WHERE categoryId = ?
+    ''',
+      [categoryId],
+    );
+
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<void> deleteCategoryAndMoveTransactions({
+    required String type,
+    required int oldCategoryId,
+    required int newCategoryId,
+  }) async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      final transactionTable = type == "Expense" ? "expenses" : "budgets";
+
+      final categoryTable = type == "Expense"
+          ? "expense_categories"
+          : "budget_categories";
+
+      // Move all transactions to the new category
+      await txn.update(
+        transactionTable,
+        {"categoryId": newCategoryId},
+        where: "categoryId = ?",
+        whereArgs: [oldCategoryId],
+      );
+
+      // Delete the old category
+      await txn.delete(
+        categoryTable,
+        where: "id = ?",
+        whereArgs: [oldCategoryId],
+      );
+    });
+  }
+
+  Future<List<Category>> getCategories(String type) async {
+    final db = await database;
+
+    final table = type == "Expense"
+        ? "expense_categories"
+        : "budget_categories";
+
+    final result = await db.query(table);
+
+    return result.map((row) {
+      return Category(
+        id: row["id"] as int,
+        name: row["name"] as String,
+        icon: IconData(row["icon"] as int, fontFamily: "MaterialIcons"),
+      );
+    }).toList();
+  }
+
+  Future<void> insertCategory(String type, String name, int icon) async {
+    final db = await database;
+
+    final table = type == "Expense"
+        ? "expense_categories"
+        : "budget_categories";
+
+    await db.insert(table, {"name": name, "icon": icon});
+  }
+
+  Future<void> updateCategory(
+    String type,
+    int id,
+    String name,
+    int icon,
+  ) async {
+    final db = await database;
+
+    final table = type == "Expense"
+        ? "expense_categories"
+        : "budget_categories";
+
+    await db.update(
+      table,
+      {"name": name, "icon": icon},
+      where: "id = ?",
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> moveCategoryTransactions(
+    String type,
+    int oldCategoryId,
+    int newCategoryId,
+  ) async {
+    final db = await database;
+
+    final table = type == "Expense" ? "expenses" : "budgets";
+
+    await db.update(
+      table,
+      {"categoryId": newCategoryId},
+      where: "categoryId = ?",
+      whereArgs: [oldCategoryId],
+    );
+  }
+
+  Future<void> deleteCategory(String type, int id) async {
+    final db = await database;
+
+    final table = type == "Expense"
+        ? "expense_categories"
+        : "budget_categories";
+
+    await db.delete(table, where: "id = ?", whereArgs: [id]);
+  }
+
   Future<void> clearAllData() async {
     final db = await database;
 
     await db.delete("expenses");
+
+    await db.delete("budgets");
+  }
+
+  Future clearExpenses() async {
+    final db = await database;
+
+    await db.delete("expenses");
+  }
+
+  Future clearBudgets() async {
+    final db = await database;
 
     await db.delete("budgets");
   }

@@ -27,7 +27,8 @@ class AboutPage extends StatelessWidget {
 
             const Center(
               child: Text(
-                "Student Expense AI",
+                textAlign: TextAlign.center,
+                "Student Expense Recommendation System",
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
               ),
             ),

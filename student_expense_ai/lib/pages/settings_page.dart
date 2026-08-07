@@ -3,6 +3,7 @@ import '../database/database_helper.dart';
 import '../utils/currency_helper.dart';
 import '../utils/theme_helper.dart';
 import 'about_page.dart';
+import 'manage_categories_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -27,14 +28,171 @@ class _SettingsPageState extends State<SettingsPage> {
     await loadSettings();
   }
 
-  Future<void> clearData() async {
-    await DatabaseHelper.instance.clearAllData();
+  Future clearData() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Clear Data",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+                title: const Text("Delete All Data"),
+                subtitle: const Text("Delete all expenses and budgets"),
+                onTap: () {
+                  Navigator.pop(context, "all");
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.receipt_long, color: Colors.red),
+                title: const Text("Delete Expenses"),
+                subtitle: const Text("Delete all expense records"),
+                onTap: () {
+                  Navigator.pop(context, "expenses");
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(
+                  Icons.account_balance_wallet,
+                  color: Colors.red,
+                ),
+                title: const Text("Delete Budgets"),
+                subtitle: const Text("Delete all budget records"),
+                onTap: () {
+                  Navigator.pop(context, "budgets");
+                },
+              ),
+
+              const SizedBox(height: 8),
+
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text("Cancel"),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (choice == null || !mounted) return;
+
+    String title;
+    String message;
+
+    switch (choice) {
+      case "all":
+        title = "Delete All Data?";
+        message =
+            "This will permanently delete all expenses and budgets. "
+            "Your categories and settings will remain unchanged.";
+        break;
+
+      case "expenses":
+        title = "Delete All Expenses?";
+        message =
+            "This will permanently delete all expense records. "
+            "Your budgets and settings will remain unchanged.";
+        break;
+
+      case "budgets":
+        title = "Delete All Budgets?";
+        message =
+            "This will permanently delete all budget records. "
+            "Your expenses and settings will remain unchanged.";
+        break;
+
+      default:
+        return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+
+          content: Text(message),
+
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text("Cancel"),
+            ),
+
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    switch (choice) {
+      case "all":
+        await DatabaseHelper.instance.clearAllData();
+        break;
+
+      case "expenses":
+        await DatabaseHelper.instance.clearExpenses();
+        break;
+
+      case "budgets":
+        await DatabaseHelper.instance.clearBudgets();
+        break;
+    }
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("All expense and budget data cleared")),
-    );
+    String messageText;
+
+    switch (choice) {
+      case "all":
+        messageText = "All expense and budget data deleted";
+        break;
+
+      case "expenses":
+        messageText = "All expense data deleted";
+        break;
+
+      case "budgets":
+        messageText = "All budget data deleted";
+        break;
+
+      default:
+        messageText = "Data deleted";
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(messageText)));
   }
 
   Future<void> loadSettings() async {
@@ -175,6 +333,26 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             Card(
               child: ListTile(
+                leading: const Icon(Icons.category),
+
+                title: const Text("Manage Categories"),
+
+                subtitle: const Text("Add, edit, and remove categories"),
+
+                trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ManageCategoriesPage(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Card(
+              child: ListTile(
                 leading: const Icon(Icons.delete_forever, color: Colors.red),
 
                 title: const Text(
@@ -185,51 +363,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
 
-                subtitle: const Text("Delete all expenses and budgets"),
+                subtitle: const Text("Delete expense or budget records"),
 
-                trailing: const Icon(Icons.arrow_forward_ios),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 18),
 
-                onTap: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text("Clear All Data?"),
-
-                        content: const Text(
-                          "This will permanently delete all expenses and budgets. "
-                          "Your settings will remain unchanged.",
-                        ),
-
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context, false);
-                            },
-
-                            child: const Text("Cancel"),
-                          ),
-
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context, true);
-                            },
-
-                            child: const Text(
-                              "Clear",
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-
-                  if (confirm == true) {
-                    clearData();
-                  }
-                },
+                onTap: clearData,
               ),
             ),
             Card(
