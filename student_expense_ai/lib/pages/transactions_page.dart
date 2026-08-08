@@ -4,6 +4,7 @@ import 'package:student_expense_ai/database/database_helper.dart';
 import 'package:student_expense_ai/widgets/transaction_tile.dart';
 import 'package:student_expense_ai/utils/currency_helper.dart';
 import 'package:student_expense_ai/pages/add_transaction_modal.dart';
+import 'package:student_expense_ai/pages/transaction_details_page.dart';
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
@@ -157,7 +158,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         refresh();
                       },
 
-                      onTap: () async {
+                      onEdit: () async {
                         final result = await showAddModal(
                           context,
                           transaction: transaction,
@@ -165,9 +166,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
                         if (result == true) {
                           hasChanged = true;
-
                           refresh();
                         }
+                      },
+
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TransactionDetailsPage(
+                              transaction: transaction,
+                            ),
+                          ),
+                        );
+
+                        refresh();
                       },
                     );
                   }).toList(),

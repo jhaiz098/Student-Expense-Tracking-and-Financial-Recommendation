@@ -10,7 +10,7 @@ class TransactionTile extends StatelessWidget {
 
   final Future<void> Function() onDelete;
   final Future<void> Function() onTap;
-
+  final Future Function() onEdit;
   const TransactionTile({
     super.key,
     required this.transaction,
@@ -20,6 +20,7 @@ class TransactionTile extends StatelessWidget {
     required this.amount,
     required this.isExpense,
     required this.onDelete,
+    required this.onEdit,
     required this.onTap,
   });
 
@@ -50,7 +51,18 @@ class TransactionTile extends StatelessWidget {
             IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
+              icon: const Icon(Icons.edit),
+              tooltip: "Edit",
+              onPressed: () async {
+                await onEdit();
+              },
+            ),
+
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
               icon: const Icon(Icons.delete, color: Colors.red),
+              tooltip: "Delete",
               onPressed: () async {
                 final confirm = await showDialog<bool>(
                   context: context,

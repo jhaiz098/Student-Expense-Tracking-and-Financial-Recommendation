@@ -7,7 +7,7 @@ Future<bool?> showAddModal(
   BuildContext context, {
   Map<String, dynamic>? transaction,
 }) {
-  return Navigator.push<bool>(
+  return Navigator.push(
     context,
     MaterialPageRoute(builder: (_) => AddModalPage(transaction: transaction)),
   );
@@ -55,7 +55,9 @@ class _AddModalPageState extends State<AddModalPage> {
         (category) => category.id == categoryId,
       );
 
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
@@ -64,11 +66,60 @@ class _AddModalPageState extends State<AddModalPage> {
         ? await DatabaseHelper.instance.getExpenseCategories()
         : await DatabaseHelper.instance.getBudgetCategories();
 
-    setState(() {
-      categories = data;
-    });
+    if (mounted) {
+      setState(() {
+        categories = data;
+      });
+    }
 
     return data;
+  }
+
+  Future<bool> checkExcessSpending(double newAmount) async {
+    // Only expenses affect the budget.
+    if (selectedType != "Expense") {
+      return false;
+    }
+
+    final monthlyBudget = await DatabaseHelper.instance.getCurrentMonthBudget();
+
+    final expenses = await DatabaseHelper.instance.getExpenses();
+
+    final now = DateTime.now();
+
+    double currentMonthlyExpenses = 0;
+
+    for (final expense in expenses) {
+      final createdAt = DateTime.parse(expense["createdAt"]);
+
+      if (createdAt.month == now.month && createdAt.year == now.year) {
+        currentMonthlyExpenses += (expense["amount"] as num).toDouble();
+      }
+    }
+
+    // If editing an existing Expense,
+    // remove its old amount first.
+    if (widget.transaction != null &&
+        widget.transaction!["type"] == "Expense") {
+      final oldCreatedAt = DateTime.parse(widget.transaction!["createdAt"]);
+
+      if (oldCreatedAt.month == now.month && oldCreatedAt.year == now.year) {
+        currentMonthlyExpenses -= (widget.transaction!["amount"] as num)
+            .toDouble();
+      }
+    }
+
+    // Prevent tiny floating-point issues.
+    if (currentMonthlyExpenses < 0) {
+      currentMonthlyExpenses = 0;
+    }
+
+    // Calculate what spending will be after this expense.
+    final projectedExpenses = currentMonthlyExpenses + newAmount;
+
+    // If projected spending is greater than the budget,
+    // the expense should trigger the warning.
+    return projectedExpenses > monthlyBudget;
   }
 
   Future<void> saveTransaction() async {
@@ -79,19 +130,145 @@ class _AddModalPageState extends State<AddModalPage> {
       return;
     }
 
+    final amount = double.tryParse(amountController.text);
+
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid amount")),
+      );
+      return;
+    }
+
+    // --------------------------------------------------
+    // CHECK FOR EXCESS SPENDING
+    // --------------------------------------------------
+
+    if (selectedType == "Expense") {
+      final willExceedBudget = await checkExcessSpending(amount);
+
+      if (willExceedBudget) {
+        final monthlyBudget = await DatabaseHelper.instance
+            .getCurrentMonthBudget();
+
+        final expenses = await DatabaseHelper.instance.getExpenses();
+
+        final now = DateTime.now();
+
+        double monthlyExpenses = 0;
+
+        for (final expense in expenses) {
+          final date = DateTime.parse(expense["createdAt"]);
+
+          if (date.month == now.month && date.year == now.year) {
+            monthlyExpenses += (expense["amount"] as num).toDouble();
+          }
+        }
+
+        // If editing an existing current-month expense,
+        // remove its old amount from the calculation.
+        if (widget.transaction != null &&
+            widget.transaction!["type"] == "Expense") {
+          final oldDate = DateTime.parse(widget.transaction!["createdAt"]);
+
+          if (oldDate.month == now.month && oldDate.year == now.year) {
+            monthlyExpenses -= (widget.transaction!["amount"] as num)
+                .toDouble();
+          }
+        }
+
+        // Prevent negative values caused by floating-point issues.
+        if (monthlyExpenses < 0) {
+          monthlyExpenses = 0;
+        }
+
+        // Spending after adding the new expense.
+        final projectedExpenses = monthlyExpenses + amount;
+
+        // Remaining budget should NEVER be negative.
+        final remainingBudget = (monthlyBudget - monthlyExpenses).clamp(
+          0.0,
+          double.infinity,
+        );
+
+        // Excess spending after adding the new expense.
+        final projectedExcess = (projectedExpenses - monthlyBudget).clamp(
+          0.0,
+          double.infinity,
+        );
+
+        final shouldProceed = await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text("Excess Spending Warning"),
+
+              content: Text(
+                "Your remaining budget is "
+                "₱${remainingBudget.toStringAsFixed(2)}.\n\n"
+                "This expense is "
+                "₱${amount.toStringAsFixed(2)}.\n\n"
+                "Recording this expense will result in "
+                "₱${projectedExcess.toStringAsFixed(2)} "
+                "of excess spending.\n\n"
+                "Do you want to continue?",
+              ),
+
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context, false);
+                  },
+                  child: const Text("Cancel"),
+                ),
+
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text(
+                    "Proceed",
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+
+        // User chose not to continue.
+        if (shouldProceed != true) {
+          return;
+        }
+      }
+    }
+
+    // --------------------------------------------------
+    // PREPARE DATA
+    // --------------------------------------------------
+
     final data = {
-      "amount": double.parse(amountController.text),
+      "amount": amount,
       "categoryId": selectedCategory!.id,
       "note": noteController.text.trim(),
-      "createdAt": DateTime.now().toIso8601String(),
+
+      // Preserve original date when editing.
+      "createdAt": widget.transaction != null
+          ? widget.transaction!["createdAt"]
+          : DateTime.now().toIso8601String(),
     };
 
+    // --------------------------------------------------
     // EDIT MODE
+    // --------------------------------------------------
+
     if (widget.transaction != null) {
       final oldType = widget.transaction!["type"];
       final id = widget.transaction!["id"];
 
-      // Same type, just update
+      // Same type: update existing record.
       if (oldType == selectedType) {
         if (selectedType == "Expense") {
           await DatabaseHelper.instance.updateExpenses(id, data);
@@ -99,20 +276,20 @@ class _AddModalPageState extends State<AddModalPage> {
           await DatabaseHelper.instance.updateBudget(id, data);
         }
       }
-      // Type changed: move record
+      // Type changed: move record.
       else {
         if (oldType == "Expense" && selectedType == "Budget") {
           await DatabaseHelper.instance.deleteExpenses(id);
-
           await DatabaseHelper.instance.insertBudget(data);
         } else if (oldType == "Budget" && selectedType == "Expense") {
           await DatabaseHelper.instance.deleteBudget(id);
-
           await DatabaseHelper.instance.insertExpense(data);
         }
       }
     }
+    // --------------------------------------------------
     // ADD MODE
+    // --------------------------------------------------
     else {
       if (selectedType == "Expense") {
         await DatabaseHelper.instance.insertExpense(data);
@@ -140,21 +317,26 @@ class _AddModalPageState extends State<AddModalPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
+
       appBar: AppBar(
         title: Text(
           widget.transaction == null ? "Add Transaction" : "Edit Transaction",
         ),
+
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
+
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 10),
+
             child: TextButton(
               onPressed: saveTransaction,
+
               child: const Text(
                 "Save",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -166,8 +348,10 @@ class _AddModalPageState extends State<AddModalPage> {
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+
           children: [
             const Text(
               "What do you want to add?",
@@ -203,15 +387,19 @@ class _AddModalPageState extends State<AddModalPage> {
 
             TextField(
               controller: amountController,
+
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
+
               decoration: InputDecoration(
                 labelText: "Amount",
                 prefixIcon: const Icon(Icons.attach_money),
+
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -222,11 +410,14 @@ class _AddModalPageState extends State<AddModalPage> {
 
             TextField(
               controller: noteController,
+
               maxLines: 2,
+
               decoration: InputDecoration(
                 labelText: "Note / Description",
                 hintText: "Enter details (optional)",
                 prefixIcon: const Icon(Icons.notes),
+
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -235,7 +426,7 @@ class _AddModalPageState extends State<AddModalPage> {
 
             const SizedBox(height: 25),
 
-            Text(
+            const Text(
               "Category",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
@@ -245,6 +436,7 @@ class _AddModalPageState extends State<AddModalPage> {
             Wrap(
               spacing: 8,
               runSpacing: 4,
+
               children: categories.map((category) {
                 return ChoiceChip(
                   avatar: Icon(category.icon, size: 15),
@@ -296,6 +488,7 @@ class _AddModalPageState extends State<AddModalPage> {
 
     return SizedBox(
       height: 50,
+
       child: ElevatedButton.icon(
         onPressed: () {
           setState(() {
