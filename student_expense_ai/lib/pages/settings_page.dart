@@ -4,6 +4,7 @@ import '../utils/currency_helper.dart';
 import '../utils/theme_helper.dart';
 import 'about_page.dart';
 import 'manage_categories_page.dart';
+import 'profile_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -242,6 +243,21 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
 
             const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.person),
+                title: const Text("Profile"),
+                subtitle: const Text("Manage your personal information"),
+                trailing: const Icon(Icons.chevron_right),
+
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfilePage()),
+                  );
+                },
+              ),
+            ),
 
             Card(
               child: ListTile(

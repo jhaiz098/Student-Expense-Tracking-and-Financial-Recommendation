@@ -13,7 +13,7 @@ class AnalyticsPage extends StatefulWidget {
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
   String selectedPeriod = "This Month";
-  String trendPeriod = "This Year";
+  String trendPeriod = "This Month";
 
   List<Map<String, dynamic>> trendData = [];
   List<Map<String, dynamic>> expenses = [];
@@ -46,93 +46,304 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }
 
   Future<void> loadTrendData() async {
-    final expenses = await DatabaseHelper.instance.getExpenses();
-    final budgets = await DatabaseHelper.instance.getBudget();
+    final expensesData = await DatabaseHelper.instance.getExpenses();
+    final budgetsData = await DatabaseHelper.instance.getBudget();
 
-    Map<String, double> monthlyExpenses = {};
-    Map<String, double> monthlyBudgets = {};
+    final now = DateTime.now();
 
-    DateTime now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
-    int startYear = now.year;
+    Map<String, double> chartExpenses = {};
+    Map<String, double> chartRemaining = {};
+    Map<String, double> chartExcess = {};
 
-    if (trendPeriod == "Past 3 Years") {
-      startYear = now.year - 2;
-    } else if (trendPeriod == "Past 5 Years") {
-      startYear = now.year - 4;
-    }
+    List<String> labels = [];
 
-    for (var expense in expenses) {
-      DateTime date = DateTime.parse(expense["createdAt"]);
+    // ============================================================
+    // THIS WEEK
+    // ============================================================
 
-      if (trendPeriod != "All Time" && date.year < startYear) {
-        continue;
+    if (trendPeriod == "This Week") {
+      final startOfWeek = DateTime(
+        today.year,
+        today.month,
+        today.day - (today.weekday - 1),
+      );
+
+      // Create labels for the week.
+      for (int i = 0; i < 7; i++) {
+        final date = startOfWeek.add(Duration(days: i));
+
+        final key = DateFormat("MMM d").format(date);
+
+        labels.add(key);
+
+        chartExpenses[key] = 0;
+        chartRemaining[key] = 0;
+        chartExcess[key] = 0;
       }
 
-      String key;
+      // ----------------------------------------------------------
+      // BUDGETS
+      // These are NOT displayed directly.
+      // They are used to calculate the running balance.
+      // ----------------------------------------------------------
 
-      if (trendPeriod == "This Year") {
-        if (date.year != now.year) continue;
+      Map<String, double> dailyBudgetAdded = {};
 
-        key = DateFormat("MMM").format(date);
-      } else {
-        key = date.year.toString();
+      for (var budget in budgetsData) {
+        final date = DateTime.parse(budget["createdAt"]);
+
+        final budgetDate = DateTime(date.year, date.month, date.day);
+
+        final difference = budgetDate.difference(startOfWeek).inDays;
+
+        if (difference >= 0 && difference < 7) {
+          final key = DateFormat("MMM d").format(date);
+
+          dailyBudgetAdded[key] =
+              (dailyBudgetAdded[key] ?? 0) +
+              (budget["amount"] as num).toDouble();
+        }
       }
 
-      monthlyExpenses[key] = (monthlyExpenses[key] ?? 0) + expense["amount"];
+      // ----------------------------------------------------------
+      // RUNNING BALANCE
+      // ----------------------------------------------------------
+
+      double runningBudget = 0;
+
+      for (int i = 0; i < 7; i++) {
+        final date = startOfWeek.add(Duration(days: i));
+
+        // Don't calculate future dates.
+        if (date.isAfter(today)) {
+          break;
+        }
+
+        final key = DateFormat("MMM d").format(date);
+
+        // Add budget entered on this date.
+        runningBudget += dailyBudgetAdded[key] ?? 0;
+
+        // Calculate today's expenses.
+        double dailyExpenses = 0;
+
+        for (var expense in expensesData) {
+          final expenseDate = DateTime.parse(expense["createdAt"]);
+
+          final normalizedExpenseDate = DateTime(
+            expenseDate.year,
+            expenseDate.month,
+            expenseDate.day,
+          );
+
+          if (normalizedExpenseDate == date) {
+            dailyExpenses += (expense["amount"] as num).toDouble();
+          }
+        }
+
+        chartExpenses[key] = dailyExpenses;
+
+        // Subtract expenses.
+        runningBudget -= dailyExpenses;
+
+        // Remaining or excess.
+        if (runningBudget >= 0) {
+          chartRemaining[key] = runningBudget;
+          chartExcess[key] = 0;
+        } else {
+          chartRemaining[key] = 0;
+          chartExcess[key] = runningBudget.abs();
+        }
+      }
     }
+    // ============================================================
+    // THIS MONTH
+    // ============================================================
+    else if (trendPeriod == "This Month") {
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
 
-    for (var budget in budgets) {
-      DateTime date = DateTime.parse(budget["createdAt"]);
+      // Create labels for every day.
+      for (int day = 1; day <= daysInMonth; day++) {
+        final date = DateTime(now.year, now.month, day);
 
-      if (trendPeriod != "All Time" && date.year < startYear) {
-        continue;
+        final key = DateFormat("MMM d").format(date);
+
+        labels.add(key);
+
+        chartExpenses[key] = 0;
+        chartRemaining[key] = 0;
+        chartExcess[key] = 0;
       }
 
-      String key;
+      // ----------------------------------------------------------
+      // BUDGETS
+      // Used internally to calculate remaining budget.
+      // ----------------------------------------------------------
 
-      if (trendPeriod == "This Year") {
-        if (date.year != now.year) continue;
+      Map<String, double> dailyBudgetAdded = {};
 
-        key = DateFormat("MMM").format(date);
-      } else {
-        key = date.year.toString();
+      for (var budget in budgetsData) {
+        final date = DateTime.parse(budget["createdAt"]);
+
+        if (date.year == now.year && date.month == now.month) {
+          final key = DateFormat("MMM d").format(date);
+
+          dailyBudgetAdded[key] =
+              (dailyBudgetAdded[key] ?? 0) +
+              (budget["amount"] as num).toDouble();
+        }
       }
 
-      monthlyBudgets[key] = (monthlyBudgets[key] ?? 0) + budget["amount"];
+      // ----------------------------------------------------------
+      // RUNNING BALANCE
+      // ----------------------------------------------------------
+
+      double runningBudget = 0;
+
+      for (int day = 1; day <= daysInMonth; day++) {
+        final date = DateTime(now.year, now.month, day);
+
+        // Do not calculate future dates.
+        if (date.isAfter(today)) {
+          break;
+        }
+
+        final key = DateFormat("MMM d").format(date);
+
+        // Add budget entered on this date.
+        runningBudget += dailyBudgetAdded[key] ?? 0;
+
+        // Calculate expenses for this date.
+        double dailyExpenses = 0;
+
+        for (var expense in expensesData) {
+          final expenseDate = DateTime.parse(expense["createdAt"]);
+
+          final normalizedExpenseDate = DateTime(
+            expenseDate.year,
+            expenseDate.month,
+            expenseDate.day,
+          );
+
+          if (normalizedExpenseDate == date) {
+            dailyExpenses += (expense["amount"] as num).toDouble();
+          }
+        }
+
+        // Store actual expenses for this day.
+        chartExpenses[key] = dailyExpenses;
+
+        // Subtract expenses.
+        runningBudget -= dailyExpenses;
+
+        // Remaining or excess.
+        if (runningBudget >= 0) {
+          chartRemaining[key] = runningBudget;
+          chartExcess[key] = 0;
+        } else {
+          chartRemaining[key] = 0;
+          chartExcess[key] = runningBudget.abs();
+        }
+      }
+    }
+    // ============================================================
+    // PAST 12 MONTHS
+    // ============================================================
+    else if (trendPeriod == "Past 12 Months") {
+      // Create 12 month labels.
+      for (int i = 11; i >= 0; i--) {
+        final date = DateTime(now.year, now.month - i, 1);
+
+        final key = DateFormat("MMM yyyy").format(date);
+
+        labels.add(key);
+
+        chartExpenses[key] = 0;
+        chartRemaining[key] = 0;
+        chartExcess[key] = 0;
+      }
+
+      // ----------------------------------------------------------
+      // EXPENSES BY MONTH
+      // ----------------------------------------------------------
+
+      Map<String, double> monthlyExpenses = {};
+
+      for (var expense in expensesData) {
+        final date = DateTime.parse(expense["createdAt"]);
+
+        final monthsAgo = (now.year - date.year) * 12 + now.month - date.month;
+
+        if (monthsAgo >= 0 && monthsAgo < 12) {
+          final key = DateFormat("MMM yyyy").format(date);
+
+          monthlyExpenses[key] =
+              (monthlyExpenses[key] ?? 0) +
+              (expense["amount"] as num).toDouble();
+        }
+      }
+
+      // ----------------------------------------------------------
+      // BUDGETS BY MONTH
+      // ----------------------------------------------------------
+
+      Map<String, double> monthlyBudgetAdded = {};
+
+      for (var budget in budgetsData) {
+        final date = DateTime.parse(budget["createdAt"]);
+
+        final monthsAgo = (now.year - date.year) * 12 + now.month - date.month;
+
+        if (monthsAgo >= 0 && monthsAgo < 12) {
+          final key = DateFormat("MMM yyyy").format(date);
+
+          monthlyBudgetAdded[key] =
+              (monthlyBudgetAdded[key] ?? 0) +
+              (budget["amount"] as num).toDouble();
+        }
+      }
+
+      // ----------------------------------------------------------
+      // RUNNING BALANCE BY MONTH
+      // ----------------------------------------------------------
+
+      double runningBudget = 0;
+
+      for (String key in labels) {
+        // Add budgets that were entered during this month.
+        runningBudget += monthlyBudgetAdded[key] ?? 0;
+
+        // Get expenses for this month.
+        final monthlyExpense = monthlyExpenses[key] ?? 0;
+
+        // Display monthly expenses.
+        chartExpenses[key] = monthlyExpense;
+
+        // Subtract expenses.
+        runningBudget -= monthlyExpense;
+
+        // Remaining or excess.
+        if (runningBudget >= 0) {
+          chartRemaining[key] = runningBudget;
+          chartExcess[key] = 0;
+        } else {
+          chartRemaining[key] = 0;
+          chartExcess[key] = runningBudget.abs();
+        }
+      }
     }
 
-    List<String> keys = [
-      ...{...monthlyExpenses.keys, ...monthlyBudgets.keys},
-    ];
-
-    if (trendPeriod == "This Year") {
-      List<String> months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-
-      keys.sort((a, b) => months.indexOf(a).compareTo(months.indexOf(b)));
-    } else {
-      keys.sort();
-    }
+    if (!mounted) return;
 
     setState(() {
-      trendData = keys.map((key) {
+      trendData = labels.map((label) {
         return {
-          "label": key,
-          "budget": monthlyBudgets[key] ?? 0,
-          "expense": monthlyExpenses[key] ?? 0,
+          "label": label,
+          "expenses": chartExpenses[label] ?? 0,
+          "remaining": chartRemaining[label] ?? 0,
+          "excess": chartExcess[label] ?? 0,
         };
       }).toList();
     });
@@ -398,6 +609,72 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
+  double _getChartMaxY() {
+    double highest = 0;
+
+    for (final data in trendData) {
+      final expenses = (data["expenses"] as num?)?.toDouble() ?? 0;
+      final remaining = (data["remaining"] as num?)?.toDouble() ?? 0;
+      final excess = (data["excess"] as num?)?.toDouble() ?? 0;
+
+      highest = [
+        highest,
+        expenses,
+        remaining,
+        excess,
+      ].reduce((a, b) => a > b ? a : b);
+    }
+
+    if (highest <= 0) {
+      return 100;
+    }
+
+    // Give the highest bar some breathing room.
+    if (highest <= 500) {
+      return 500;
+    } else if (highest <= 1000) {
+      return 1000;
+    } else if (highest <= 5000) {
+      return 5000;
+    } else if (highest <= 10000) {
+      return 10000;
+    } else if (highest <= 50000) {
+      return 50000;
+    } else if (highest <= 100000) {
+      return 100000;
+    } else if (highest <= 500000) {
+      return 500000;
+    } else if (highest <= 1000000) {
+      return 1000000;
+    } else {
+      return (highest / 500000).ceil() * 500000;
+    }
+  }
+
+  double _getChartInterval() {
+    double maxY = _getChartMaxY();
+
+    if (maxY <= 500) {
+      return 100;
+    } else if (maxY <= 1000) {
+      return 200;
+    } else if (maxY <= 5000) {
+      return 1000;
+    } else if (maxY <= 10000) {
+      return 2000;
+    } else if (maxY <= 50000) {
+      return 10000;
+    } else if (maxY <= 100000) {
+      return 20000;
+    } else if (maxY <= 500000) {
+      return 100000;
+    } else if (maxY <= 1000000) {
+      return 200000;
+    } else {
+      return 500000;
+    }
+  }
+
   Widget budgetExpenseChart() {
     return Container(
       width: double.infinity,
@@ -417,7 +694,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             children: [
               const Expanded(
                 child: Text(
-                  "Budget vs Expenses Trend",
+                  "Budget & Spending Trend",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -427,21 +704,19 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
                 items: const [
                   DropdownMenuItem(
-                    value: "This Year",
-                    child: Text("This Year"),
+                    value: "This Week",
+                    child: Text("This Week"),
                   ),
 
                   DropdownMenuItem(
-                    value: "Past 3 Years",
-                    child: Text("Past 3 Years"),
+                    value: "This Month",
+                    child: Text("This Month"),
                   ),
 
                   DropdownMenuItem(
-                    value: "Past 5 Years",
-                    child: Text("Past 5 Years"),
+                    value: "Past 12 Months",
+                    child: Text("Past 12 Months"),
                   ),
-
-                  DropdownMenuItem(value: "All Time", child: Text("All Time")),
                 ],
 
                 onChanged: (value) {
@@ -460,68 +735,146 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           const SizedBox(height: 20),
 
           SizedBox(
-            height: 260,
+            height: 250,
 
-            child: BarChart(
-              BarChartData(
-                borderData: FlBorderData(show: false),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
 
-                gridData: const FlGridData(show: true),
+              child: SizedBox(
+                width: trendPeriod == "This Month"
+                    ? trendData.length * 40.0
+                    : trendPeriod == "This Week"
+                    ? trendData.length * 50.0
+                    : trendData.length * 75.0,
 
-                barGroups: trendData.map((data) {
-                  int index = trendData.indexOf(data);
+                child: BarChart(
+                  BarChartData(
+                    borderData: FlBorderData(show: false),
 
-                  return BarChartGroupData(
-                    x: index,
+                    gridData: FlGridData(
+                      show: true,
 
-                    barRods: [
-                      BarChartRodData(
-                        toY: data["budget"],
-                        width: 10,
-                        color: Colors.deepPurple,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                      // Keep horizontal grid lines.
+                      drawHorizontalLine: true,
 
-                      BarChartRodData(
-                        toY: data["expense"],
-                        width: 10,
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ],
-                  );
-                }).toList(),
-
-                titlesData: FlTitlesData(
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-
-                      getTitlesWidget: (value, meta) {
-                        int index = value.toInt();
-
-                        if (index >= trendData.length) {
-                          return const SizedBox();
-                        }
-
-                        return Text(
-                          trendData[index]["label"],
-                          style: const TextStyle(fontSize: 10),
-                        );
-                      },
+                      // We will draw the vertical lines ourselves.
+                      drawVerticalLine: false,
                     ),
-                  ),
 
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: true, reservedSize: 40),
-                  ),
+                    maxY: _getChartMaxY(),
 
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                    barGroups: trendData.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final data = entry.value;
 
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+                      return BarChartGroupData(
+                        x: index,
+
+                        barsSpace: 2,
+
+                        barRods: [
+                          // EXPENSES
+                          BarChartRodData(
+                            toY: (data["expenses"] as num?)?.toDouble() ?? 0,
+                            width: 8,
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+
+                          // REMAINING
+                          if (((data["remaining"] as num?)?.toDouble() ?? 0) >
+                              0)
+                            BarChartRodData(
+                              toY: (data["remaining"] as num?)?.toDouble() ?? 0,
+                              width: 8,
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+
+                          // EXCESS
+                          if (((data["excess"] as num?)?.toDouble() ?? 0) > 0)
+                            BarChartRodData(
+                              toY: (data["excess"] as num?)?.toDouble() ?? 0,
+                              width: 8,
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                        ],
+                      );
+                    }).toList(),
+
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+
+                          reservedSize: 30,
+
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+
+                            if (index < 0 || index >= trendData.length) {
+                              return const SizedBox();
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+
+                              child: Text(
+                                trendData[index]["label"],
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      // LEFT AXIS
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+
+                          reservedSize: 55,
+
+                          interval: _getChartInterval(),
+
+                          getTitlesWidget: (value, meta) {
+                            // Hide the very top Y-axis label.
+                            if (value >= _getChartMaxY()) {
+                              return const SizedBox();
+                            }
+
+                            String label;
+
+                            if (value >= 1000000) {
+                              label =
+                                  "₱${(value / 1000000).toStringAsFixed(1)}M";
+                            } else if (value >= 1000) {
+                              label = "₱${(value / 1000).toStringAsFixed(0)}K";
+                            } else {
+                              label = "₱${value.toStringAsFixed(0)}";
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 5),
+
+                              child: Text(
+                                label,
+                                style: const TextStyle(fontSize: 9),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -534,21 +887,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             mainAxisAlignment: MainAxisAlignment.center,
 
             children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-
-              const SizedBox(width: 6),
-
-              const Text("Budget"),
-
-              const SizedBox(width: 20),
-
+              // Expenses
               Container(
                 width: 12,
                 height: 12,
@@ -561,6 +900,38 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               const SizedBox(width: 6),
 
               const Text("Expenses"),
+
+              const SizedBox(width: 15),
+
+              // Remaining
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+
+              const SizedBox(width: 6),
+
+              const Text("Remaining"),
+
+              const SizedBox(width: 15),
+
+              // Excess
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+
+              const SizedBox(width: 6),
+
+              const Text("Excess"),
             ],
           ),
         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'utils/theme_helper.dart';
-import 'pages/main_page.dart';
+// import 'pages/main_page.dart';
+import 'pages/startup_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +35,7 @@ class StudentExpenseAI extends StatelessWidget {
 
           themeMode: ThemeHelper.instance.themeMode,
 
-          home: const MainPage(),
+          home: const StartupPage(),
         );
       },
     );

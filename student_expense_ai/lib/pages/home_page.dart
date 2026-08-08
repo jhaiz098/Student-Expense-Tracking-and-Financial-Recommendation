@@ -103,7 +103,7 @@ class _HomePageState extends State<HomePage> {
         ? 0
         : monthlyExpenses / monthlyBudget;
 
-    final int budgetPercentage = (budgetUsage * 100).floor();
+    final int budgetPercentage = (budgetUsage * 100).floor().clamp(0, 100);
 
     Color getBudgetColor() {
       if (budgetPercentage >= 85) {
@@ -135,7 +135,7 @@ class _HomePageState extends State<HomePage> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
 
-                  // Change card color when spending exceeds budget.
+                  // Keep the red background when there is excess spending.
                   color: getExcessSpending() > 0
                       ? Colors.red.shade700
                       : Colors.deepPurple,
@@ -145,38 +145,41 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
-                    Text(
-                      getExcessSpending() > 0
-                          ? "Excess Spending"
-                          : "Remaining Budget",
-
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
+                    const Text(
+                      "Remaining Budget",
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
                     ),
 
                     const SizedBox(height: 8),
 
-                    Text(
-                      getExcessSpending() > 0
-                          ? CurrencyHelper.format(getExcessSpending())
-                          : CurrencyHelper.format(getRemainingBudget()),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          CurrencyHelper.format(getRemainingBudget()),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
 
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                      ),
+                        // Show excess beside ₱0.00 only when over budget.
+                        if (getExcessSpending() > 0) ...[
+                          const SizedBox(width: 8),
+
+                          Text(
+                            "(${CurrencyHelper.format(getExcessSpending())} excess)",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-
-                    const SizedBox(height: 8),
-
-                    if (getExcessSpending() > 0)
-                      const Text(
-                        "You have exceeded your monthly budget.",
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
 
                     const SizedBox(height: 20),
 
@@ -187,16 +190,13 @@ class _HomePageState extends State<HomePage> {
                         Text(
                           "$currentMonth Budget\n"
                           "${CurrencyHelper.format(monthlyBudget)}",
-
                           style: const TextStyle(color: Colors.white),
                         ),
 
                         Text(
                           "Spent\n"
                           "${CurrencyHelper.format(monthlyExpenses)}",
-
                           textAlign: TextAlign.right,
-
                           style: const TextStyle(color: Colors.white),
                         ),
                       ],
@@ -206,71 +206,6 @@ class _HomePageState extends State<HomePage> {
               ),
 
               const SizedBox(height: 20),
-
-              // Excess Spending
-              if (getExcessSpending() > 0)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: Colors.red.shade50,
-                    border: Border.all(color: Colors.red.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: Colors.red.shade700,
-                        size: 24,
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Excess Spending",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red.shade700,
-                              ),
-                            ),
-
-                            const SizedBox(height: 2),
-
-                            Text(
-                              "You've exceeded your monthly budget.",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.red.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(width: 8),
-
-                      Text(
-                        CurrencyHelper.format(getExcessSpending()),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              if (getExcessSpending() > 0) const SizedBox(height: 20),
 
               Container(
                 width: double.infinity,
@@ -342,10 +277,43 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 12),
 
-                    if (getBudgetPercentage() >= budgetReminder)
+                    if (getExcessSpending() > 0)
                       Container(
                         width: double.infinity,
+                        padding: const EdgeInsets.all(12),
 
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.red.shade700,
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            Expanded(
+                              child: Text(
+                                "Excess Spending\n"
+                                "You have exceeded your monthly budget by "
+                                "${CurrencyHelper.format(getExcessSpending())}.",
+
+                                style: TextStyle(
+                                  color: Colors.red.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (getBudgetPercentage() >= budgetReminder)
+                      Container(
+                        width: double.infinity,
                         padding: const EdgeInsets.all(12),
 
                         decoration: BoxDecoration(
@@ -365,8 +333,10 @@ class _HomePageState extends State<HomePage> {
                             Expanded(
                               child: Text(
                                 "Budget Warning\n"
-                                "You have used ${getBudgetPercentage().toStringAsFixed(0)}% "
+                                "You have used "
+                                "${getBudgetPercentage().toStringAsFixed(0)}% "
                                 "of your monthly budget.",
+
                                 style: TextStyle(
                                   color: Colors.red.shade700,
                                   fontWeight: FontWeight.bold,

@@ -83,7 +83,54 @@ class DatabaseHelper {
       "aiRecommendation": 1,
     });
 
+    await db.execute('''
+      CREATE TABLE user_profile (
+        id INTEGER PRIMARY KEY,
+        fullName TEXT NOT NULL,
+        dateOfBirth TEXT NOT NULL,
+        address TEXT NOT NULL,
+        currentStatus TEXT NOT NULL,
+        school TEXT,
+        schoolAddress TEXT,
+        workplace TEXT,
+        workplaceAddress TEXT,
+        position TEXT
+      )
+    ''');
+
     await insertDefaultCategories(db);
+  }
+
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    final db = await database;
+
+    final result = await db.query(
+      'user_profile',
+      where: 'id = ?',
+      whereArgs: [1],
+      limit: 1,
+    );
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    return result.first;
+  }
+
+  Future<void> saveUserProfile(Map<String, dynamic> data) async {
+    final db = await database;
+
+    await db.insert('user_profile', {
+      'id': 1,
+      ...data,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateUserProfile(Map<String, dynamic> data) async {
+    final db = await database;
+
+    await db.update('user_profile', data, where: 'id = ?', whereArgs: [1]);
   }
 
   Future<int> getCategoryTransactionCount(String type, int categoryId) async {

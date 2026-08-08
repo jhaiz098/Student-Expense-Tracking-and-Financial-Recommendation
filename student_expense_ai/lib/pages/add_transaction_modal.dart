@@ -26,7 +26,7 @@ class _AddModalPageState extends State<AddModalPage> {
   final amountController = TextEditingController();
   final noteController = TextEditingController();
 
-  String selectedType = "Expense";
+  String selectedType = "Budget";
   Category? selectedCategory;
 
   List<Category> categories = [];
