@@ -69,7 +69,6 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE settings(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        currency TEXT NOT NULL,
         theme TEXT NOT NULL,
         budgetReminder INTEGER NOT NULL DEFAULT 80,
         aiRecommendation INTEGER NOT NULL
@@ -77,7 +76,6 @@ class DatabaseHelper {
     ''');
 
     await db.insert('settings', {
-      "currency": "PHP",
       "theme": "System",
       "budgetReminder": 80,
       "aiRecommendation": 1,
@@ -326,7 +324,7 @@ class DatabaseHelper {
     final result = await db.query("settings", where: "id = ?", whereArgs: [1]);
 
     if (result.isEmpty) {
-      return {"currency": "PHP", "theme": "Light"};
+      return {"theme": "Light", "budgetReminder": 80};
     }
 
     String theme = result.first["theme"]?.toString() ?? "Light";
@@ -336,21 +334,9 @@ class DatabaseHelper {
     }
 
     return {
-      "currency": result.first["currency"]?.toString() ?? "PHP",
       "theme": theme,
       "budgetReminder": result.first["budgetReminder"] ?? 80,
     };
-  }
-
-  Future<void> updateCurrency(String currency) async {
-    final db = await database;
-
-    await db.update(
-      "settings",
-      {"currency": currency},
-      where: "id = ?",
-      whereArgs: [1],
-    );
   }
 
   Future<void> updateTheme(String theme) async {
