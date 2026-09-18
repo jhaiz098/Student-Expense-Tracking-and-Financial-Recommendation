@@ -15,7 +15,7 @@ class TransactionsPage extends StatefulWidget {
 
 class _TransactionsPageState extends State<TransactionsPage> {
   List<Map<String, dynamic>> transactions = [];
-
+  DateTime selectedMonth = DateTime.now();
   bool hasChanged = false;
 
   @override
@@ -23,6 +23,93 @@ class _TransactionsPageState extends State<TransactionsPage> {
     super.initState();
 
     loadTransactions();
+  }
+
+  Future<void> selectMonthYear() async {
+    int selectedYear = selectedMonth.year;
+    int selectedMonthNumber = selectedMonth.month;
+
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("Select Month"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<int>(
+                    value: selectedYear,
+                    decoration: const InputDecoration(labelText: "Year"),
+                    items: List.generate(DateTime.now().year - 1999, (index) {
+                      final year = DateTime.now().year - index;
+
+                      return DropdownMenuItem(
+                        value: year,
+                        child: Text(year.toString()),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() {
+                          selectedYear = value;
+                        });
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  DropdownButtonFormField<int>(
+                    value: selectedMonthNumber,
+                    decoration: const InputDecoration(labelText: "Month"),
+                    items: List.generate(12, (index) {
+                      final month = index + 1;
+
+                      return DropdownMenuItem(
+                        value: month,
+                        child: Text(
+                          DateFormat("MMMM").format(DateTime(2000, month)),
+                        ),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() {
+                          selectedMonthNumber = value;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.pop(
+                      context,
+                      DateTime(selectedYear, selectedMonthNumber),
+                    );
+                  },
+                  child: const Text("Select"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        selectedMonth = result;
+      });
+    }
   }
 
   Future<void> loadTransactions() async {
@@ -53,6 +140,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
     for (var transaction in transactions) {
       DateTime date = DateTime.parse(transaction["createdAt"]);
 
+      if (date.year != selectedMonth.year ||
+          date.month != selectedMonth.month) {
+        continue;
+      }
+
       String title;
 
       final now = DateTime.now();
@@ -60,7 +152,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       if (date.year == now.year &&
           date.month == now.month &&
           date.day == now.day) {
-        title = "Today";
+        title = "Today — ${DateFormat("MMMM d, yyyy").format(date)}";
       } else if (date.year == now.year &&
           date.month == now.month &&
           date.day == now.day - 1) {
@@ -69,10 +161,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         title = DateFormat("MMMM d, yyyy").format(date);
       }
 
-      if (!grouped.containsKey(title)) {
-        grouped[title] = [];
-      }
-
+      grouped.putIfAbsent(title, () => []);
       grouped[title]!.add(transaction);
     }
 
@@ -80,7 +169,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   String getCurrentMonthTitle() {
-    return DateFormat("MMMM yyyy").format(DateTime.now());
+    return DateFormat("MMMM yyyy").format(selectedMonth);
   }
 
   @override
@@ -107,10 +196,22 @@ class _TransactionsPageState extends State<TransactionsPage> {
           padding: const EdgeInsets.all(20),
 
           children: [
-            Text(
-              getCurrentMonthTitle(),
-
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            GestureDetector(
+              onTap: selectMonthYear,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    getCurrentMonthTitle(),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_drop_down, size: 24),
+                ],
+              ),
             ),
 
             const SizedBox(height: 20),

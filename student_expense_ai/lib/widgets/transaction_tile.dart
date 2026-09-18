@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class TransactionTile extends StatelessWidget {
   final Map<String, dynamic> transaction;
@@ -11,6 +12,7 @@ class TransactionTile extends StatelessWidget {
   final Future<void> Function() onDelete;
   final Future<void> Function() onTap;
   final Future Function() onEdit;
+
   const TransactionTile({
     super.key,
     required this.transaction,
@@ -26,6 +28,10 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final DateTime createdDate = DateTime.parse(transaction["createdAt"]);
+
+    final String formattedDate = DateFormat("MMMM d, yyyy").format(createdDate);
+
     return Card(
       color: Colors.white,
       child: ListTile(
@@ -33,9 +39,29 @@ class TransactionTile extends StatelessWidget {
 
         leading: CircleAvatar(child: Icon(icon)),
 
-        title: Text(category),
+        title: Text(
+          category,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
 
-        subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13),
+            ),
+            Text(
+              DateFormat(
+                "MMM d, yyyy",
+              ).format(DateTime.parse(transaction["createdAt"])),
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
+          ],
+        ),
 
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
