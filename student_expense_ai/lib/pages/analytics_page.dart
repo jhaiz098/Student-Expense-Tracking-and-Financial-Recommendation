@@ -3,9 +3,12 @@ import '../database/database_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../utils/currency_helper.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 class AnalyticsPage extends StatefulWidget {
-  const AnalyticsPage({super.key});
+  final GlobalKey analyticsKey;
+
+  const AnalyticsPage({super.key, required this.analyticsKey});
 
   @override
   State<AnalyticsPage> createState() => _AnalyticsPageState();
@@ -538,44 +541,68 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-              // Filter
-              Align(
-                alignment: Alignment.centerRight,
+              Showcase(
+                key: widget.analyticsKey,
+                title: "Analytics",
+                description:
+                    "Analyze your spending by category, trends, highest spending day, and monthly comparisons.",
+                targetBorderRadius: BorderRadius.circular(12),
+                overlayOpacity: 0.65,
+                tooltipBackgroundColor: Colors.deepPurple,
+                tooltipBorderRadius: BorderRadius.circular(16),
+                tooltipPadding: const EdgeInsets.all(16),
+                textColor: Colors.white,
 
-                child: DropdownButton<String>(
-                  value: selectedPeriod,
+                titleTextStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
 
-                  items: const [
-                    DropdownMenuItem(
-                      value: "This Month",
-                      child: Text("This Month"),
-                    ),
+                descTextStyle: const TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: Colors.white,
+                ),
 
-                    DropdownMenuItem(
-                      value: "Past 3 Months",
-                      child: Text("Past 3 Months"),
-                    ),
+                child: Align(
+                  alignment: Alignment.centerRight,
 
-                    DropdownMenuItem(
-                      value: "Past 12 Months",
-                      child: Text("Past 12 Months"),
-                    ),
+                  child: DropdownButton<String>(
+                    value: selectedPeriod,
 
-                    DropdownMenuItem(
-                      value: "All Time",
-                      child: Text("All Time"),
-                    ),
-                  ],
+                    items: const [
+                      DropdownMenuItem(
+                        value: "This Month",
+                        child: Text("This Month"),
+                      ),
 
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        selectedPeriod = value;
-                      });
+                      DropdownMenuItem(
+                        value: "Past 3 Months",
+                        child: Text("Past 3 Months"),
+                      ),
 
-                      calculateAnalytics();
-                    }
-                  },
+                      DropdownMenuItem(
+                        value: "Past 12 Months",
+                        child: Text("Past 12 Months"),
+                      ),
+
+                      DropdownMenuItem(
+                        value: "All Time",
+                        child: Text("All Time"),
+                      ),
+                    ],
+
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedPeriod = value;
+                        });
+
+                        calculateAnalytics();
+                      }
+                    },
+                  ),
                 ),
               ),
 
@@ -634,7 +661,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     const SizedBox(height: 4),
 
                     Text(
-                      CurrencyHelper.format(highestAmount),
+                      "₱${highestAmount.toStringAsFixed(2)}",
 
                       style: const TextStyle(color: Colors.white, fontSize: 17),
                     ),
@@ -674,7 +701,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     const SizedBox(height: 4),
 
                     Text(
-                      CurrencyHelper.format(highestSpendingDayAmount),
+                      "₱${highestSpendingDayAmount.toStringAsFixed(2)}",
 
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
@@ -729,7 +756,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         ),
 
                         Text(
-                          CurrencyHelper.format(currentMonthExpenses),
+                          "₱${currentMonthExpenses.toStringAsFixed(2)}",
 
                           style: const TextStyle(
                             fontSize: 17,
@@ -758,7 +785,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         ),
 
                         Text(
-                          CurrencyHelper.format(previousMonthExpenses),
+                          "₱${previousMonthExpenses.toStringAsFixed(2)}",
 
                           style: const TextStyle(
                             fontSize: 17,
@@ -808,8 +835,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         children: [
                           Text(
                             monthlyDifference >= 0
-                                ? "↑ ${CurrencyHelper.format(monthlyDifference)}"
-                                : "↓ ${CurrencyHelper.format(monthlyDifference.abs())}",
+                                ? "↑ ₱${monthlyDifference.toStringAsFixed(2)}"
+                                : "↓ ₱${monthlyDifference.abs().toStringAsFixed(2)}",
 
                             style: const TextStyle(
                               fontSize: 20,
@@ -895,7 +922,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         const SizedBox(height: 5),
 
                         Text(
-                          CurrencyHelper.format(entry.value),
+                          "₱${entry.value.toStringAsFixed(2)}",
 
                           style: TextStyle(color: Colors.grey.shade700),
                         ),

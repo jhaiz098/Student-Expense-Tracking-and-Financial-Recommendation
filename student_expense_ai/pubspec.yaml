@@ -40,6 +40,7 @@ dependencies:
   fl_chart: ^0.69.0
   connectivity_plus: ^6.0.5
   http: ^1.2.2
+  showcaseview: ^5.1.0
 
 dev_dependencies:
   flutter_test:

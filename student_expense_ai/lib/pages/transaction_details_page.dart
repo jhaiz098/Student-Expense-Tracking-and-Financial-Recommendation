@@ -68,7 +68,7 @@ class TransactionDetailsPage extends StatelessWidget {
 
             Text(
               "${isExpense ? '-' : '+'}"
-              "${CurrencyHelper.format(amount)}",
+              "₱${amount.toStringAsFixed(2)}",
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.bold,

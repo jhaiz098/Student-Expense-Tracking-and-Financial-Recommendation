@@ -247,7 +247,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       subtitle: transaction["note"] ?? "No description",
 
                       amount:
-                          "${CurrencyHelper.getSymbol()}${(transaction["amount"] as num).toDouble().toStringAsFixed(2)}",
+                          "₱${(transaction["amount"] as num).toDouble().toStringAsFixed(2)}",
 
                       isExpense: isExpense,
 

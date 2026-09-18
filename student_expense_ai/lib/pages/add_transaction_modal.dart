@@ -144,6 +144,19 @@ class _AddModalPageState extends State<AddModalPage> {
     // --------------------------------------------------
 
     if (selectedType == "Expense") {
+      final hasBudget = await DatabaseHelper.instance.hasCurrentMonthBudget();
+
+      if (!hasBudget) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Please add a budget for this month before recording an expense.",
+            ),
+          ),
+        );
+        return;
+      }
+
       final willExceedBudget = await checkExcessSpending(amount);
 
       if (willExceedBudget) {

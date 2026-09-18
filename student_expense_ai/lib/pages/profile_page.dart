@@ -155,7 +155,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const MainPage()),
+      MaterialPageRoute(builder: (_) => const MainPage(showTutorial: true)),
     );
   }
 

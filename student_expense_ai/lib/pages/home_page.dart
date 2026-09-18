@@ -6,9 +6,17 @@ import '../utils/currency_helper.dart';
 import 'package:student_expense_ai/pages/transactions_page.dart';
 import '../widgets/transaction_tile.dart';
 import 'transaction_details_page.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final GlobalKey budgetKey;
+  final GlobalKey budgetUsageKey;
+
+  const HomePage({
+    super.key,
+    required this.budgetKey,
+    required this.budgetUsageKey,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -159,224 +167,275 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 20),
 
               // Budget Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
+              Showcase(
+                key: widget.budgetKey,
+                title: "Monthly Budget",
+                description:
+                    "This shows your monthly budget, total spending, and remaining amount.",
+                targetBorderRadius: BorderRadius.circular(20),
 
-                  // Keep the red background when there is excess spending.
-                  color: getExcessSpending() > 0
-                      ? Colors.red.shade700
-                      : Colors.deepPurple,
+                overlayColor: Colors.black,
+                overlayOpacity: 0.65,
+
+                tooltipBackgroundColor: Colors.deepPurple,
+                tooltipBorderRadius: BorderRadius.circular(16),
+                tooltipPadding: const EdgeInsets.all(16),
+
+                textColor: Colors.white,
+
+                titleTextStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
 
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                descTextStyle: const TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: Colors.white,
+                ),
 
-                  children: [
-                    const Text(
-                      "Remaining Budget",
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                    ),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
 
-                    const SizedBox(height: 8),
+                    // Keep the red background when there is excess spending.
+                    color: getExcessSpending() > 0
+                        ? Colors.red.shade700
+                        : Colors.deepPurple,
+                  ),
 
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          CurrencyHelper.format(getRemainingBudget()),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
 
-                        // Show excess beside ₱0.00 only when over budget.
-                        if (getExcessSpending() > 0) ...[
-                          const SizedBox(width: 8),
+                    children: [
+                      const Text(
+                        "Remaining Budget",
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
 
+                      const SizedBox(height: 8),
+
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
                           Text(
-                            "(${CurrencyHelper.format(getExcessSpending())} excess)",
+                            "₱${getRemainingBudget().toStringAsFixed(2)}",
                             style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+
+                          // Show excess beside ₱0.00 only when over budget.
+                          if (getExcessSpending() > 0) ...[
+                            const SizedBox(width: 8),
+
+                            Text(
+                              "(₱${getExcessSpending().toStringAsFixed(2)} excess)",
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
+                      ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
-                      children: [
-                        Text(
-                          "$currentMonth Budget\n"
-                          "${CurrencyHelper.format(monthlyBudget)}",
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                        children: [
+                          Text(
+                            "$currentMonth Budget\n"
+                            "₱${monthlyBudget.toStringAsFixed(2)}",
+                            style: const TextStyle(color: Colors.white),
+                          ),
 
-                        Text(
-                          "Spent\n"
-                          "${CurrencyHelper.format(monthlyExpenses)}",
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ],
+                          Text(
+                            "Spent\n"
+                            "₱${monthlyExpenses.toStringAsFixed(2)}",
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
+              Showcase(
+                key: widget.budgetUsageKey,
+                title: "Budget Usage",
+                description:
+                    "Monitor how much of your monthly budget you have already used.",
+                targetBorderRadius: BorderRadius.circular(20),
+                overlayOpacity: 0.65,
+                tooltipBackgroundColor: Colors.deepPurple,
+                tooltipBorderRadius: BorderRadius.circular(16),
+                tooltipPadding: const EdgeInsets.all(16),
+                textColor: Colors.white,
+                titleTextStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.pie_chart,
-                          color: Colors.deepPurple,
-                          size: 20,
-                        ),
-
-                        const SizedBox(width: 8),
-
-                        const Text(
-                          "Budget Usage",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                descTextStyle: const TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: Colors.white,
+                ),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.pie_chart,
+                            color: Colors.deepPurple,
+                            size: 20,
                           ),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 10),
+                          const SizedBox(width: 8),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "$budgetPercentage%",
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                          const Text(
+                            "Budget Usage",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-
-                        Text(
-                          "${CurrencyHelper.format(monthlyExpenses)} / ${CurrencyHelper.format(monthlyBudget)}",
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: budgetUsage.clamp(0, 1),
-                        minHeight: 8,
-                        backgroundColor: Colors.grey.shade200,
-                        color: budgetPercentage >= budgetReminder
-                            ? Colors.red
-                            : budgetPercentage >= (budgetReminder - 20)
-                            ? Colors.orange
-                            : Colors.green,
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
 
-                    if (getExcessSpending() > 0)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
+                      const SizedBox(height: 10),
 
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.red.shade700,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "$budgetPercentage%",
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                             ),
+                          ),
 
-                            const SizedBox(width: 10),
-
-                            Expanded(
-                              child: Text(
-                                "Excess Spending\n"
-                                "You have exceeded your monthly budget by "
-                                "${CurrencyHelper.format(getExcessSpending())}.",
-
-                                style: TextStyle(
-                                  color: Colors.red.shade700,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                          Text(
+                            "₱${monthlyExpenses.toStringAsFixed(2)} / ₱${monthlyBudget.toStringAsFixed(2)}",
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 13,
                             ),
-                          ],
-                        ),
-                      )
-                    else if (getBudgetPercentage() >= budgetReminder)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
+                          ),
+                        ],
+                      ),
 
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      const SizedBox(height: 10),
 
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.red.shade700,
-                            ),
-
-                            const SizedBox(width: 10),
-
-                            Expanded(
-                              child: Text(
-                                "Budget Warning\n"
-                                "You have used "
-                                "${getBudgetPercentage().toStringAsFixed(0)}% "
-                                "of your monthly budget.",
-
-                                style: TextStyle(
-                                  color: Colors.red.shade700,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: budgetUsage.clamp(0, 1),
+                          minHeight: 8,
+                          backgroundColor: Colors.grey.shade200,
+                          color: budgetPercentage >= budgetReminder
+                              ? Colors.red
+                              : budgetPercentage >= (budgetReminder - 20)
+                              ? Colors.orange
+                              : Colors.green,
                         ),
                       ),
-                  ],
+                      const SizedBox(height: 12),
+
+                      if (getExcessSpending() > 0)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.red.shade700,
+                              ),
+
+                              const SizedBox(width: 10),
+
+                              Expanded(
+                                child: Text(
+                                  "Excess Spending\n"
+                                  "You have exceeded your monthly budget by "
+                                  "₱${getExcessSpending().toStringAsFixed(2)}.",
+
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (getBudgetPercentage() >= budgetReminder)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.red.shade700,
+                              ),
+
+                              const SizedBox(width: 10),
+
+                              Expanded(
+                                child: Text(
+                                  "Budget Warning\n"
+                                  "You have used "
+                                  "${getBudgetPercentage().toStringAsFixed(0)}% "
+                                  "of your monthly budget.",
+
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -403,8 +462,7 @@ class _HomePageState extends State<HomePage> {
 
                   subtitle: transaction["note"] ?? "No description",
 
-                  amount:
-                      "${CurrencyHelper.getSymbol()}${transaction["amount"].toStringAsFixed(2)}",
+                  amount: "₱${transaction["amount"].toStringAsFixed(2)}",
 
                   isExpense: isExpense,
 

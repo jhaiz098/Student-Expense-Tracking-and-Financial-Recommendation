@@ -101,6 +101,29 @@ class DatabaseHelper {
     await insertDefaultCategories(db);
   }
 
+  Future<bool> hasCurrentMonthBudget() async {
+    final db = await database;
+
+    final now = DateTime.now();
+
+    final startOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
+
+    final startOfNextMonth = DateTime(
+      now.year,
+      now.month + 1,
+      1,
+    ).toIso8601String();
+
+    final result = await db.query(
+      "budgets",
+      where: "createdAt >= ? AND createdAt < ?",
+      whereArgs: [startOfMonth, startOfNextMonth],
+      limit: 1,
+    );
+
+    return result.isNotEmpty;
+  }
+
   Future<Map<String, dynamic>?> getUserProfile() async {
     final db = await database;
 

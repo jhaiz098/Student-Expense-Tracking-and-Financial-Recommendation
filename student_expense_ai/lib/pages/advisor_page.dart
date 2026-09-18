@@ -3,9 +3,12 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../database/database_helper.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 class AdvisorPage extends StatefulWidget {
-  const AdvisorPage({super.key});
+  final GlobalKey advisorKey;
+
+  const AdvisorPage({super.key, required this.advisorKey});
 
   @override
   State<AdvisorPage> createState() => _AdvisorPageState();
@@ -241,58 +244,84 @@ class _AdvisorPageState extends State<AdvisorPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-              Container(
-                width: double.infinity,
+              Showcase(
+                key: widget.advisorKey,
+                title: "AI Financial Advisor",
+                description:
+                    "Get personalized financial recommendations based on your recorded spending and budget information.",
+                targetBorderRadius: BorderRadius.circular(12),
+                overlayOpacity: 0.65,
+                tooltipBackgroundColor: Colors.deepPurple,
+                tooltipBorderRadius: BorderRadius.circular(16),
+                tooltipPadding: const EdgeInsets.all(16),
+                textColor: Colors.white,
 
-                padding: const EdgeInsets.all(20),
-
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple,
-
-                  borderRadius: BorderRadius.circular(20),
+                titleTextStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
 
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                descTextStyle: const TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: Colors.white,
+                ),
 
-                  children: [
-                    const Row(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
                       children: [
-                        Icon(Icons.auto_awesome, color: Colors.white),
+                        Row(
+                          children: [
+                            Icon(
+                              hasInternet ? Icons.cloud_done : Icons.cloud_off,
+                              color: hasInternet ? Colors.green : Colors.red,
+                            ),
 
-                        SizedBox(width: 8),
+                            const SizedBox(width: 8),
+
+                            Text(
+                              hasInternet
+                                  ? "Internet Connected"
+                                  : "No Internet Connection",
+
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
 
                         Text(
-                          "AI Financial Advisor",
+                          hasInternet
+                              ? "AI advice can be generated once every 7 days."
+                              : "Connect to the internet to use AI Advisor.",
+                        ),
 
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                        const SizedBox(height: 15),
+
+                        SizedBox(
+                          width: double.infinity,
+
+                          child: ElevatedButton.icon(
+                            onPressed: hasInternet ? showAIConfirmation : null,
+
+                            icon: const Icon(Icons.psychology),
+
+                            label: const Text("Generate AI Advice"),
+                          ),
                         ),
                       ],
                     ),
-
-                    const SizedBox(height: 15),
-
-                    Text(
-                      advice,
-
-                      style: const TextStyle(
-                        color: Colors.white,
-
-                        fontSize: 18,
-
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 30),
-
-              const Text(
-                "AI Recommendation",
-
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 10),

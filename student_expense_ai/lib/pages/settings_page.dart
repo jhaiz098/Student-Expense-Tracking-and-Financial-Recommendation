@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
-import '../utils/currency_helper.dart';
 import '../utils/theme_helper.dart';
 import 'about_page.dart';
 import 'manage_categories_page.dart';
 import 'profile_page.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final GlobalKey settingsKey;
+
+  const SettingsPage({super.key, required this.settingsKey});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String currency = "PHP";
   String theme = "System";
   int budgetReminder = 80;
 
@@ -200,19 +201,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final data = await DatabaseHelper.instance.getSettings();
 
     setState(() {
-      currency = data["currency"];
       theme = data["theme"];
       budgetReminder = data["budgetReminder"];
-    });
-  }
-
-  Future<void> changeCurrency(String value) async {
-    await DatabaseHelper.instance.updateCurrency(value);
-
-    await CurrencyHelper.loadCurrency();
-
-    setState(() {
-      currency = value;
     });
   }
 
@@ -237,11 +227,32 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: const EdgeInsets.all(20),
 
           children: [
-            const Text(
-              "General",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Showcase(
+              key: widget.settingsKey,
+              title: "Settings",
+              description:
+                  "Manage your profile, theme, budget reminders, categories, and other app settings here.",
+              targetBorderRadius: BorderRadius.circular(8),
+              overlayOpacity: 0.65,
+              tooltipBackgroundColor: Colors.deepPurple,
+              tooltipBorderRadius: BorderRadius.circular(16),
+              tooltipPadding: const EdgeInsets.all(16),
+              textColor: Colors.white,
+              titleTextStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              descTextStyle: const TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: Colors.white,
+              ),
+              child: const Text(
+                "General",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
-
             const SizedBox(height: 10),
             Card(
               child: ListTile(
@@ -259,33 +270,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
 
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.currency_exchange),
-
-                title: const Text("Currency"),
-
-                subtitle: Text(currency),
-
-                trailing: DropdownButton<String>(
-                  value: currency,
-
-                  items: const [
-                    DropdownMenuItem(value: "PHP", child: Text("₱ PHP")),
-
-                    DropdownMenuItem(value: "USD", child: Text("\$ USD")),
-
-                    DropdownMenuItem(value: "EUR", child: Text("€ EUR")),
-                  ],
-
-                  onChanged: (value) {
-                    if (value != null) {
-                      changeCurrency(value);
-                    }
-                  },
-                ),
-              ),
-            ),
             Card(
               child: ListTile(
                 leading: const Icon(Icons.palette),
