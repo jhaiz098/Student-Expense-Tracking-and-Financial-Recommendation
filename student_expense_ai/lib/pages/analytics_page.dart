@@ -629,46 +629,46 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       return 100;
     }
 
-    // Give the highest bar some breathing room.
+    // Give the chart some space above the highest bar.
     if (highest <= 500) {
-      return 500;
+      return 600;
     } else if (highest <= 1000) {
-      return 1000;
+      return 1200;
     } else if (highest <= 5000) {
-      return 5000;
+      return 6000;
     } else if (highest <= 10000) {
-      return 10000;
+      return 12000;
     } else if (highest <= 50000) {
-      return 50000;
+      return 60000;
     } else if (highest <= 100000) {
-      return 100000;
+      return 120000;
     } else if (highest <= 500000) {
-      return 500000;
+      return 600000;
     } else if (highest <= 1000000) {
-      return 1000000;
+      return 1200000;
     } else {
-      return (highest / 500000).ceil() * 500000;
+      return (highest / 500000).ceil() * 500000 + 500000;
     }
   }
 
   double _getChartInterval() {
     double maxY = _getChartMaxY();
 
-    if (maxY <= 500) {
+    if (maxY <= 600) {
       return 100;
-    } else if (maxY <= 1000) {
+    } else if (maxY <= 1200) {
       return 200;
-    } else if (maxY <= 5000) {
+    } else if (maxY <= 6000) {
       return 1000;
-    } else if (maxY <= 10000) {
+    } else if (maxY <= 12000) {
       return 2000;
-    } else if (maxY <= 50000) {
+    } else if (maxY <= 60000) {
       return 10000;
-    } else if (maxY <= 100000) {
+    } else if (maxY <= 120000) {
       return 20000;
-    } else if (maxY <= 500000) {
+    } else if (maxY <= 600000) {
       return 100000;
-    } else if (maxY <= 1000000) {
+    } else if (maxY <= 1200000) {
       return 200000;
     } else {
       return 500000;

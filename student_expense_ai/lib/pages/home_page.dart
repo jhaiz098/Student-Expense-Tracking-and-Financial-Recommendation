@@ -21,9 +21,12 @@ class _HomePageState extends State<HomePage> {
   double monthlyBudget = 0;
   double monthlyExpenses = 0;
   String currentMonth = DateFormat('MMMM').format(DateTime.now());
+  String fullName = "";
+
   @override
   void initState() {
     super.initState();
+    loadProfile();
     loadBudget();
     loadExpenses();
     loadTransactions();
@@ -39,6 +42,16 @@ class _HomePageState extends State<HomePage> {
     await loadBudget();
     await loadExpenses();
     await loadTransactions();
+  }
+
+  Future<void> loadProfile() async {
+    final profile = await DatabaseHelper.instance.getUserProfile();
+
+    if (!mounted) return;
+
+    setState(() {
+      fullName = profile?["fullName"] ?? "";
+    });
   }
 
   Future<void> loadExpenses() async {
@@ -128,6 +141,23 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                "Hello, ${fullName.isNotEmpty ? fullName : "there"}!",
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 6),
+
+              const Text(
+                "Here's your financial overview for this month.",
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+
+              const SizedBox(height: 20),
+
               // Budget Card
               Container(
                 width: double.infinity,

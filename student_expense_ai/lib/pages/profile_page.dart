@@ -26,7 +26,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String? selectedStatus;
 
-  final List<String> statuses = ["Student", "Working", "Working Student"];
+  final List<String> statuses = ["Student", "Working Student"];
 
   @override
   void initState() {
@@ -64,8 +64,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool get isStudent =>
       selectedStatus == "Student" || selectedStatus == "Working Student";
 
-  bool get isWorking =>
-      selectedStatus == "Working" || selectedStatus == "Working Student";
+  bool get isWorking => selectedStatus == "Working Student";
 
   Future<void> selectDateOfBirth() async {
     final now = DateTime.now();
