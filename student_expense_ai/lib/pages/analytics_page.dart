@@ -25,6 +25,18 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   String highestCategory = "None";
   double highestAmount = 0;
 
+  String highestSpendingDay = "None";
+  double highestSpendingDayAmount = 0;
+
+  String currentMonthLabel = "";
+  String previousMonthLabel = "";
+
+  double currentMonthExpenses = 0;
+  double previousMonthExpenses = 0;
+
+  double monthlyDifference = 0;
+  double monthlyPercentageChange = 0;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +55,57 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     expenses = data;
 
     calculateAnalytics();
+    calculateMonthlyComparison();
+  }
+
+  void calculateMonthlyComparison() {
+    final now = DateTime.now();
+
+    final currentMonthStart = DateTime(now.year, now.month, 1);
+
+    final nextMonthStart = DateTime(now.year, now.month + 1, 1);
+
+    final previousMonthStart = DateTime(now.year, now.month - 1, 1);
+
+    double currentTotal = 0;
+    double previousTotal = 0;
+
+    for (var expense in expenses) {
+      final date = DateTime.parse(expense["createdAt"]);
+
+      final amount = (expense["amount"] as num).toDouble();
+
+      // Current month
+      if (!date.isBefore(currentMonthStart) && date.isBefore(nextMonthStart)) {
+        currentTotal += amount;
+      }
+
+      // Previous month
+      if (!date.isBefore(previousMonthStart) &&
+          date.isBefore(currentMonthStart)) {
+        previousTotal += amount;
+      }
+    }
+
+    final difference = currentTotal - previousTotal;
+
+    double percentageChange = 0;
+
+    if (previousTotal > 0) {
+      percentageChange = (difference / previousTotal) * 100;
+    }
+
+    setState(() {
+      currentMonthLabel = DateFormat("MMMM yyyy").format(currentMonthStart);
+
+      previousMonthLabel = DateFormat("MMMM yyyy").format(previousMonthStart);
+
+      currentMonthExpenses = currentTotal;
+      previousMonthExpenses = previousTotal;
+
+      monthlyDifference = difference;
+      monthlyPercentageChange = percentageChange;
+    });
   }
 
   Future<void> loadTrendData() async {
@@ -351,44 +414,61 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   void calculateAnalytics() {
     Map<String, double> totals = {};
+    Map<String, double> dailyTotals = {};
 
     double total = 0;
 
     DateTime now = DateTime.now();
 
+    DateTime? periodStart;
+    DateTime? periodEnd;
+
+    if (selectedPeriod == "This Month") {
+      periodStart = DateTime(now.year, now.month, 1);
+      periodEnd = DateTime(now.year, now.month + 1, 1);
+    } else if (selectedPeriod == "Past 3 Months") {
+      periodStart = DateTime(now.year, now.month - 2, 1);
+      periodEnd = DateTime(now.year, now.month + 1, 1);
+    } else if (selectedPeriod == "Past 12 Months") {
+      periodStart = DateTime(now.year, now.month - 11, 1);
+      periodEnd = DateTime(now.year, now.month + 1, 1);
+    } else if (selectedPeriod == "All Time") {
+      periodStart = null;
+      periodEnd = null;
+    }
+
     for (var expense in expenses) {
       DateTime date = DateTime.parse(expense["createdAt"]);
 
-      bool include = false;
+      bool include = true;
 
-      if (selectedPeriod == "This Month") {
-        include = date.month == now.month && date.year == now.year;
-      } else if (selectedPeriod == "Past 3 Months") {
-        DateTime threeMonthsAgo = DateTime(now.year, now.month - 2, 1);
-
-        include = date.isAfter(
-          threeMonthsAgo.subtract(const Duration(days: 1)),
-        );
-      } else if (selectedPeriod == "Past 12 Months") {
-        DateTime twelveMonthsAgo = DateTime(now.year, now.month - 11, 1);
-
-        include = date.isAfter(
-          twelveMonthsAgo.subtract(const Duration(days: 1)),
-        );
-      } else if (selectedPeriod == "All Time") {
-        include = true;
+      if (periodStart != null && periodEnd != null) {
+        include = !date.isBefore(periodStart) && date.isBefore(periodEnd);
       }
 
       if (include) {
         String category = expense["category"] ?? "Others";
 
-        double amount = expense["amount"].toDouble();
+        double amount = (expense["amount"] as num).toDouble();
 
+        // Category totals
         totals[category] = (totals[category] ?? 0) + amount;
 
+        // Overall total
         total += amount;
+
+        // Daily totals
+        DateTime day = DateTime(date.year, date.month, date.day);
+
+        String dayKey = DateFormat("yyyy-MM-dd").format(day);
+
+        dailyTotals[dayKey] = (dailyTotals[dayKey] ?? 0) + amount;
       }
     }
+
+    // ----------------------------------------------------------
+    // TOP SPENDING CATEGORY
+    // ----------------------------------------------------------
 
     String topCategory = "None";
     double topAmount = 0;
@@ -400,6 +480,20 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       }
     });
 
+    // ----------------------------------------------------------
+    // HIGHEST SPENDING DAY
+    // ----------------------------------------------------------
+
+    String highestDay = "None";
+    double highestDayAmount = 0;
+
+    dailyTotals.forEach((key, value) {
+      if (value > highestDayAmount) {
+        highestDay = key;
+        highestDayAmount = value;
+      }
+    });
+
     setState(() {
       categoryTotals = totals;
 
@@ -408,6 +502,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       highestCategory = topCategory;
 
       highestAmount = topAmount;
+
+      highestSpendingDay = highestDay;
+
+      highestSpendingDayAmount = highestDayAmount;
     });
   }
 
@@ -483,7 +581,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
               const SizedBox(height: 20),
 
-              // Highest Spending
+              // ----------------------------------------------------------
+              // SPENDING SUMMARY
+              // ----------------------------------------------------------
               Container(
                 width: double.infinity,
 
@@ -491,7 +591,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-
                   color: Colors.deepPurple,
                 ),
 
@@ -500,32 +599,238 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
                   children: [
                     const Text(
-                      "Top Spending Category",
+                      "Spending Insights",
 
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 20),
+
+                    // ----------------------------------------------------------
+                    // TOP SPENDING CATEGORY
+                    // ----------------------------------------------------------
+                    const Text(
+                      "Top Spending Category",
+
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+
+                    const SizedBox(height: 6),
 
                     Text(
                       highestCategory,
 
                       style: const TextStyle(
                         color: Colors.white,
-
-                        fontSize: 28,
-
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
 
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
 
                     Text(
                       CurrencyHelper.format(highestAmount),
 
-                      style: const TextStyle(color: Colors.white, fontSize: 18),
+                      style: const TextStyle(color: Colors.white, fontSize: 17),
                     ),
+
+                    const SizedBox(height: 20),
+
+                    // Divider
+                    Container(height: 1, color: Colors.white24),
+
+                    const SizedBox(height: 20),
+
+                    // ----------------------------------------------------------
+                    // HIGHEST SPENDING DAY
+                    // ----------------------------------------------------------
+                    const Text(
+                      "Highest Spending Day",
+
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    Text(
+                      highestSpendingDay == "None"
+                          ? "None"
+                          : DateFormat(
+                              "MMMM d, yyyy",
+                            ).format(DateTime.parse(highestSpendingDay)),
+
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    Text(
+                      CurrencyHelper.format(highestSpendingDayAmount),
+
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              // ----------------------------------------------------------
+              // MONTHLY COMPARISON
+              // ----------------------------------------------------------
+              Container(
+                width: double.infinity,
+
+                padding: const EdgeInsets.all(20),
+
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+
+                  children: [
+                    const Text(
+                      "Monthly Comparison",
+
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ----------------------------------------------------------
+                    // CURRENT MONTH
+                    // ----------------------------------------------------------
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                      children: [
+                        Text(
+                          currentMonthLabel,
+
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 15,
+                          ),
+                        ),
+
+                        Text(
+                          CurrencyHelper.format(currentMonthExpenses),
+
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ----------------------------------------------------------
+                    // PREVIOUS MONTH
+                    // ----------------------------------------------------------
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                      children: [
+                        Text(
+                          previousMonthLabel,
+
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 15,
+                          ),
+                        ),
+
+                        Text(
+                          CurrencyHelper.format(previousMonthExpenses),
+
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Divider(color: Colors.grey.shade200),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      "Compared with last month",
+
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    if (previousMonthExpenses == 0 && currentMonthExpenses == 0)
+                      Text(
+                        "No spending recorded",
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 15,
+                        ),
+                      )
+                    else if (previousMonthExpenses == 0)
+                      Text(
+                        "No spending recorded last month",
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 15,
+                        ),
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+
+                        children: [
+                          Text(
+                            monthlyDifference >= 0
+                                ? "↑ ${CurrencyHelper.format(monthlyDifference)}"
+                                : "↓ ${CurrencyHelper.format(monthlyDifference.abs())}",
+
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          Text(
+                            monthlyPercentageChange >= 0
+                                ? "${monthlyPercentageChange.toStringAsFixed(1)}% higher"
+                                : "${monthlyPercentageChange.abs().toStringAsFixed(1)}% lower",
+
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
