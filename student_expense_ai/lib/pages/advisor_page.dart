@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../database/database_helper.dart';
+import '../services/ai_service.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 class AdvisorPage extends StatefulWidget {
@@ -20,6 +21,9 @@ class _AdvisorPageState extends State<AdvisorPage> {
       "based on your spending habits.";
 
   bool hasInternet = false;
+  bool isGenerating = false;
+
+  List<Map<String, dynamic>> recommendations = [];
 
   StreamSubscription? connectivitySubscription;
 
@@ -41,7 +45,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       // testPatterns();
       // test();
 
-      testAdvisorData();
+      // testAdvisorData();
       //TESTT OUTPUT
 
       checkInternet();
@@ -59,7 +63,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
   Future<void> testAdvisorData() async {
     final data = await DatabaseHelper.instance.getAdvisorData();
 
-    print(data);
+    // print(data);
+    debugPrint(data.toString());
   }
 
   void testPatterns() async {
@@ -188,43 +193,63 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
     showDialog(
       context: context,
-
       builder: (context) {
         return AlertDialog(
           title: const Text("Generate AI Advice?"),
-
           content: const Text(
-            "AI advice can only be generated once every 7 days.\n\n"
-            "Your expense data will be analyzed to create "
-            "personalized financial recommendations.",
+            "Your expense, budget, spending pattern, and profile information "
+            "will be analyzed to create personalized financial recommendations.",
           ),
-
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
-
               child: const Text("Cancel"),
             ),
-
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("AI Advisor is not available yet."),
-                  ),
-                );
+                await generateAIAdvice();
               },
-
               child: const Text("Generate"),
             ),
           ],
         );
       },
     );
+  }
+
+  Future<void> generateAIAdvice() async {
+    setState(() {
+      isGenerating = true;
+    });
+
+    try {
+      final spendingData = await DatabaseHelper.instance.getAdvisorData();
+
+      final result = await AIService.getRecommendation(
+        spendingData: spendingData,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        recommendations = result;
+        isGenerating = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isGenerating = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to generate AI advice: $e")),
+      );
+    }
   }
 
   @override
@@ -324,61 +349,117 @@ class _AdvisorPageState extends State<AdvisorPage> {
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
 
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
+              if (isGenerating)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
 
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              if (!isGenerating && recommendations.isNotEmpty) ...[
+                const Text(
+                  "Your Recommendations",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
 
-                    children: [
-                      Row(
+                const SizedBox(height: 12),
+
+                ...recommendations.asMap().entries.map((entry) {
+                  final recommendation = entry.value;
+
+                  final title = recommendation["title"] ?? "Recommendation";
+
+                  final type = recommendation["type"] ?? "general";
+
+                  IconData icon = Icons.lightbulb_outline;
+                  Color backgroundColor = Colors.deepPurple.shade50;
+                  Color iconColor = Colors.deepPurple;
+
+                  if (type == "budget") {
+                    icon = Icons.account_balance_wallet_outlined;
+                    backgroundColor = Colors.deepPurple.shade50;
+                    iconColor = Colors.deepPurple;
+                  } else if (type == "food") {
+                    icon = Icons.restaurant_outlined;
+                    backgroundColor = Colors.orange.shade50;
+                    iconColor = Colors.orange.shade800;
+                  } else if (type == "transportation") {
+                    icon = Icons.directions_bus_outlined;
+                    backgroundColor = Colors.blue.shade50;
+                    iconColor = Colors.blue.shade800;
+                  } else if (type == "saving") {
+                    icon = Icons.savings_outlined;
+                    backgroundColor = Colors.green.shade50;
+                    iconColor = Colors.green.shade800;
+                  } else if (type == "spending") {
+                    icon = Icons.trending_up;
+                    backgroundColor = Colors.red.shade50;
+                    iconColor = Colors.red.shade800;
+                  } else if (type == "warning") {
+                    icon = Icons.warning_amber_outlined;
+                    backgroundColor = Colors.amber.shade50;
+                    iconColor = Colors.amber.shade800;
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            hasInternet ? Icons.cloud_done : Icons.cloud_off,
-
-                            color: hasInternet ? Colors.green : Colors.red,
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: iconColor.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(icon, color: iconColor, size: 24),
                           ),
 
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 14),
 
-                          Text(
-                            hasInternet
-                                ? "Internet Connected"
-                                : "No Internet Connection",
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: iconColor,
+                                  ),
+                                ),
 
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                                const SizedBox(height: 6),
+
+                                Text(
+                                  recommendation["message"] ?? "",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
+                    ),
+                  );
+                }),
+              ],
 
-                      const SizedBox(height: 10),
-
-                      Text(
-                        hasInternet
-                            ? "AI advice can be generated once every 7 days."
-                            : "Connect to the internet to use AI Advisor.",
-                      ),
-
-                      const SizedBox(height: 15),
-
-                      SizedBox(
-                        width: double.infinity,
-
-                        child: ElevatedButton.icon(
-                          onPressed: hasInternet ? showAIConfirmation : null,
-
-                          icon: const Icon(Icons.psychology),
-
-                          label: const Text("Generate AI Advice"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              const SizedBox(height: 10),
             ],
           ),
         ),

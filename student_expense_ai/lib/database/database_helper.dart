@@ -870,7 +870,23 @@ class DatabaseHelper {
     };
   }
 
+  int calculateAge(String dateOfBirth) {
+    final birthDate = DateTime.parse(dateOfBirth);
+    final today = DateTime.now();
+
+    int age = today.year - birthDate.year;
+
+    if (today.month < birthDate.month ||
+        (today.month == birthDate.month && today.day < birthDate.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
   Future<Map<String, dynamic>> getAdvisorData() async {
+    final profile = await getUserProfile();
+
     final budget = await getCurrentMonthBudget();
     final spent = await getCurrentExpenseAmount();
 
@@ -891,9 +907,29 @@ class DatabaseHelper {
 
     final previousCategories = await getCategorySpending(previousMonth: true);
 
+    final currentStatus = profile?["currentStatus"];
+
+    final Map<String, dynamic> profileData = {
+      "age": profile?["dateOfBirth"] != null
+          ? calculateAge(profile!["dateOfBirth"])
+          : null,
+      "current_status": currentStatus,
+      "address": profile?["address"],
+      "school": profile?["school"],
+      "school_address": profile?["schoolAddress"],
+    };
+
+    if (currentStatus == "Working Student") {
+      profileData["workplace"] = profile?["workplace"];
+      profileData["workplace_address"] = profile?["workplaceAddress"];
+      profileData["position"] = profile?["position"];
+    }
+
     final patterns = await getSpendingPatterns();
 
     return {
+      "profile": profileData,
+
       "budget": {
         "current_month_budget": budget,
 
@@ -913,7 +949,7 @@ class DatabaseHelper {
             previousBudget - previousSpent,
       },
 
-      "expense_summary": {"total_transactions": transactions},
+      "expense_summary": {"total_expense_transactions": transactions},
 
       "categories": {
         "current_month": currentCategories,
