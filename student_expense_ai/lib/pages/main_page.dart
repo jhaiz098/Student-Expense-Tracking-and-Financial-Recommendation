@@ -77,7 +77,7 @@ class _MainPageState extends State<MainPage> {
       },
 
       onDismiss: (key) {
-        debugPrint("Tutorial dismissed");
+        debugPrint("Tutorial dismissed: $key");
       },
     );
 
@@ -262,6 +262,10 @@ class _MainPageState extends State<MainPage> {
       return;
     }
 
+    ShowcaseView.get().dismiss();
+
+    if (!mounted) return;
+
     setState(() {
       currentIndex = 1;
       refreshKey++;
@@ -269,7 +273,6 @@ class _MainPageState extends State<MainPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !tutorialActive) return;
-
       startAnalyticsTutorial();
     });
   }
@@ -283,6 +286,10 @@ class _MainPageState extends State<MainPage> {
       return;
     }
 
+    ShowcaseView.get().dismiss();
+
+    if (!mounted) return;
+
     setState(() {
       currentIndex = 2;
       refreshKey++;
@@ -290,7 +297,6 @@ class _MainPageState extends State<MainPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !tutorialActive) return;
-
       startAdvisorTutorial();
     });
   }
@@ -304,6 +310,10 @@ class _MainPageState extends State<MainPage> {
       return;
     }
 
+    ShowcaseView.get().dismiss();
+
+    if (!mounted) return;
+
     setState(() {
       currentIndex = 3;
       refreshKey++;
@@ -311,7 +321,6 @@ class _MainPageState extends State<MainPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !tutorialActive) return;
-
       startSettingsTutorial();
     });
   }

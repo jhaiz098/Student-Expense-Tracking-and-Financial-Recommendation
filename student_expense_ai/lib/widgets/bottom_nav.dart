@@ -82,7 +82,7 @@ class BottomNav extends StatelessWidget {
       disableBarrierInteraction: true,
 
       // Tapping the highlighted target closes this showcase.
-      disposeOnTap: true,
+      disposeOnTap: false,
 
       // This is what lets the user physically tap
       // Analytics / Advisor / Settings.
