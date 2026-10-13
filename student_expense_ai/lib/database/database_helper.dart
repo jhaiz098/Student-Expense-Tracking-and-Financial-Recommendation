@@ -2,6 +2,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter/material.dart';
 import 'package:student_expense_ai/models/category.dart';
+import 'dart:convert';
 
 class DatabaseHelper {
   DatabaseHelper._();
@@ -93,6 +94,16 @@ class DatabaseHelper {
         workplace TEXT,
         workplaceAddress TEXT,
         position TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE ai_recommendations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL DEFAULT 1,
+        recommendation TEXT NOT NULL,
+        generated_at TEXT NOT NULL,
+        next_available_at TEXT NOT NULL
       )
     ''');
 
@@ -959,5 +970,48 @@ class DatabaseHelper {
 
       "patterns": patterns,
     };
+  }
+
+  Future<void> saveAIRecommendation({
+    required int userId,
+    required List<Map<String, dynamic>> recommendations,
+  }) async {
+    final db = await database;
+
+    final now = DateTime.now();
+    final nextAvailable = now.add(const Duration(days: 7));
+
+    await db.insert('ai_recommendations', {
+      'user_id': userId,
+      'recommendation': jsonEncode(recommendations),
+      'generated_at': now.toIso8601String(),
+      'next_available_at': nextAvailable.toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<Map<String, dynamic>?> getSavedAIRecommendation({
+    required int userId,
+  }) async {
+    final db = await database;
+
+    final result = await db.query(
+      'ai_recommendations',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'id DESC',
+      limit: 1,
+    );
+
+    if (result.isEmpty) return null;
+
+    return result.first;
+  }
+
+  List<Map<String, dynamic>> decodeAIRecommendations(String jsonString) {
+    final decoded = jsonDecode(jsonString) as List;
+
+    return decoded
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
   }
 }

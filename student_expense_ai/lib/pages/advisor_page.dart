@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../database/database_helper.dart';
 import '../services/ai_service.dart';
 import 'package:showcaseview/showcaseview.dart';
+import 'dart:convert';
 
 class AdvisorPage extends StatefulWidget {
   final GlobalKey advisorKey;
@@ -25,6 +26,12 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
   List<Map<String, dynamic>> recommendations = [];
 
+  DateTime? recommendationGeneratedAt;
+  DateTime? nextAvailableAt;
+
+  Timer? countdownTimer;
+  Duration cooldownRemaining = Duration.zero;
+
   StreamSubscription? connectivitySubscription;
 
   @override
@@ -32,6 +39,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
     super.initState();
 
     checkInternet();
+    loadSavedRecommendation();
 
     connectivitySubscription = Connectivity().onConnectivityChanged.listen((
       result,
@@ -50,6 +58,100 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
       checkInternet();
     });
+  }
+
+  Future<void> loadSavedRecommendation() async {
+    try {
+      final saved = await DatabaseHelper.instance.getSavedAIRecommendation(
+        userId: 1,
+      );
+
+      if (!mounted || saved == null) return;
+
+      final decoded = jsonDecode(saved['recommendation'] as String) as List;
+
+      final loadedRecommendations = decoded
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+
+      final generatedAt = DateTime.tryParse(
+        saved['generated_at']?.toString() ?? '',
+      );
+
+      final availableAt = DateTime.tryParse(
+        saved['next_available_at']?.toString() ?? '',
+      );
+
+      setState(() {
+        recommendations = loadedRecommendations;
+        recommendationGeneratedAt = generatedAt;
+        nextAvailableAt = availableAt;
+      });
+
+      updateCooldown();
+    } catch (e) {
+      debugPrint('Failed to load saved AI recommendation: $e');
+    }
+  }
+
+  void updateCooldown() {
+    countdownTimer?.cancel();
+
+    void updateRemainingTime() {
+      if (!mounted) return;
+
+      final next = nextAvailableAt;
+
+      final remaining = next == null
+          ? Duration.zero
+          : next.difference(DateTime.now());
+
+      setState(() {
+        cooldownRemaining = remaining.isNegative ? Duration.zero : remaining;
+      });
+
+      if (remaining.inSeconds <= 0) {
+        countdownTimer?.cancel();
+      }
+    }
+
+    updateRemainingTime();
+
+    if (cooldownRemaining > Duration.zero) {
+      countdownTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => updateRemainingTime(),
+      );
+    }
+  }
+
+  bool get isCooldownActive {
+    return nextAvailableAt != null && DateTime.now().isBefore(nextAvailableAt!);
+  }
+
+  String formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return 'Not available';
+
+    final local = dateTime.toLocal();
+
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final year = local.year;
+
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+
+    return '$month/$day/$year at $hour:$minute $period';
+  }
+
+  String formatDuration(Duration duration) {
+    final days = duration.inDays;
+    final hours = duration.inHours.remainder(24);
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    return '${days}d ${hours}h ${minutes}m ${seconds}s';
   }
 
   //TESTTTTT FUNCTIONS
@@ -170,6 +272,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
   @override
   void dispose() {
+    countdownTimer?.cancel();
     connectivitySubscription?.cancel();
 
     super.dispose();
@@ -222,6 +325,15 @@ class _AdvisorPageState extends State<AdvisorPage> {
   }
 
   Future<void> generateAIAdvice() async {
+    if (isCooldownActive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can generate new advice once every 7 days.'),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       isGenerating = true;
     });
@@ -233,12 +345,49 @@ class _AdvisorPageState extends State<AdvisorPage> {
         spendingData: spendingData,
       );
 
+      // Save only a successful, non-empty result.
+      if (result.isEmpty) {
+        throw Exception('No recommendations were returned.');
+      }
+
+      await DatabaseHelper.instance.saveAIRecommendation(
+        userId: 1,
+        recommendations: result,
+      );
+
+      // Reload the saved record so the displayed timestamps
+      // match the values stored in SQLite.
+      final saved = await DatabaseHelper.instance.getSavedAIRecommendation(
+        userId: 1,
+      );
+
       if (!mounted) return;
 
+      if (saved == null) {
+        throw Exception('The generated recommendation could not be loaded.');
+      }
+
+      final decoded = jsonDecode(saved['recommendation'] as String) as List;
+
+      final loadedRecommendations = decoded
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+
       setState(() {
-        recommendations = result;
+        recommendations = loadedRecommendations;
+
+        recommendationGeneratedAt = DateTime.tryParse(
+          saved['generated_at']?.toString() ?? '',
+        );
+
+        nextAvailableAt = DateTime.tryParse(
+          saved['next_available_at']?.toString() ?? '',
+        );
+
         isGenerating = false;
       });
+
+      updateCooldown();
     } catch (e) {
       if (!mounted) return;
 
@@ -247,7 +396,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to generate AI advice: $e")),
+        SnackBar(content: Text('Failed to generate AI advice: $e')),
       );
     }
   }
@@ -325,10 +474,48 @@ class _AdvisorPageState extends State<AdvisorPage> {
                         const SizedBox(height: 10),
 
                         Text(
-                          hasInternet
-                              ? "AI advice can be generated once every 7 days."
-                              : "Connect to the internet to use AI Advisor.",
+                          !hasInternet
+                              ? 'Connect to the internet to use AI Advisor.'
+                              : isCooldownActive
+                              ? 'You can generate new advice in:'
+                              : recommendations.isNotEmpty
+                              ? 'You can generate new advice now.'
+                              : 'AI advice can be generated once every 7 days.',
                         ),
+
+                        if (hasInternet && isCooldownActive) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            formatDuration(cooldownRemaining),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple,
+                            ),
+                          ),
+                        ],
+
+                        if (recommendationGeneratedAt != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Last generated: ${formatDateTime(recommendationGeneratedAt)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+
+                        if (nextAvailableAt != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Next available: ${formatDateTime(nextAvailableAt)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
 
                         const SizedBox(height: 15),
 
@@ -336,7 +523,12 @@ class _AdvisorPageState extends State<AdvisorPage> {
                           width: double.infinity,
 
                           child: ElevatedButton.icon(
-                            onPressed: hasInternet ? showAIConfirmation : null,
+                            onPressed:
+                                hasInternet &&
+                                    !isGenerating &&
+                                    !isCooldownActive
+                                ? showAIConfirmation
+                                : null,
 
                             icon: const Icon(Icons.psychology),
 
