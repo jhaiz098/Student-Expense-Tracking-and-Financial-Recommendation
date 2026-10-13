@@ -976,17 +976,29 @@ class DatabaseHelper {
     required int userId,
     required List<Map<String, dynamic>> recommendations,
   }) async {
-    final db = await database;
+    final db = await database; // Use your existing database getter.
 
     final now = DateTime.now();
     final nextAvailable = now.add(const Duration(days: 7));
 
-    await db.insert('ai_recommendations', {
-      'user_id': userId,
+    final values = {
       'recommendation': jsonEncode(recommendations),
       'generated_at': now.toIso8601String(),
       'next_available_at': nextAvailable.toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    };
+
+    await db.transaction((txn) async {
+      final updated = await txn.update(
+        'ai_recommendations',
+        values,
+        where: 'user_id = ?',
+        whereArgs: [userId],
+      );
+
+      if (updated == 0) {
+        await txn.insert('ai_recommendations', {'user_id': userId, ...values});
+      }
+    });
   }
 
   Future<Map<String, dynamic>?> getSavedAIRecommendation({
