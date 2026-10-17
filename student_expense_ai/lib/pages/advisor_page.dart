@@ -1,19 +1,19 @@
 import 'dart:async';
-import 'package:http/http.dart' as http;
-import 'package:flutter/material.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import '../database/database_helper.dart';
-import '../services/ai_service.dart';
-import 'package:showcaseview/showcaseview.dart';
 import 'dart:convert';
 
-const Color _advisorPurple = Color.fromARGB(255, 134, 118, 199);
-const Color _advisorBackground = Color(0xFFF7F7FB);
-const Color _advisorBorder = Color(0xFFECEAF3);
-const Color _advisorMuted = Color(0xFF6F6B82);
-const Color _advisorText = Color(0xFF29263A);
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:showcaseview/showcaseview.dart';
+
+import '../database/database_helper.dart';
+import '../services/ai_service.dart';
+
+const Color _advisorPrimary = Color(0xFF5B45B5);
+const Color _advisorPurpleLight = Color(0xFFB9A8FF);
 const Color _advisorGreen = Color(0xFF159A75);
 const Color _advisorRed = Color(0xFFE05252);
+const Color _advisorOrange = Color(0xFFF59E0B);
 
 class AdvisorPage extends StatefulWidget {
   final GlobalKey advisorKey;
@@ -25,9 +25,36 @@ class AdvisorPage extends StatefulWidget {
 }
 
 class _AdvisorPageState extends State<AdvisorPage> {
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _background =>
+      _isDark ? const Color(0xFF15131E) : const Color(0xFFF7F7FB);
+
+  Color get _card => _isDark ? const Color(0xFF211D2D) : Colors.white;
+
+  Color get _border =>
+      _isDark ? const Color(0xFF393246) : const Color(0xFFE7E4F0);
+
+  Color get _text =>
+      _isDark ? const Color(0xFFF5F2FF) : const Color(0xFF29263A);
+
+  Color get _muted =>
+      _isDark ? const Color(0xFFB7B2C8) : const Color(0xFF6F6B82);
+
+  Color get _subtle =>
+      _isDark ? const Color(0xFF928BA8) : const Color(0xFF8B8798);
+
+  Color get _surface =>
+      _isDark ? const Color(0xFF2A2538) : const Color(0xFFFAFAFD);
+
+  Color get _softPurple =>
+      _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
+
+  Color get _purple => _isDark ? _advisorPurpleLight : _advisorPrimary;
+
   String advice =
-      "Generate AI advice to receive personalized recommendations "
-      "based on your spending habits.";
+      'Generate AI advice to receive personalized recommendations '
+      'based on your spending habits.';
 
   bool hasInternet = false;
   bool isGenerating = false;
@@ -52,18 +79,6 @@ class _AdvisorPageState extends State<AdvisorPage> {
     connectivitySubscription = Connectivity().onConnectivityChanged.listen((
       result,
     ) {
-      //TESTTTT OUTPUT
-      // testRemainingBudget();
-      // testRemainingDays();
-      // testPreviousMonthExpense();
-      // testTransactionCount();
-      // testCategorySpending();
-      // testPatterns();
-      // test();
-
-      // testAdvisorData();
-      //TESTT OUTPUT
-
       checkInternet();
     });
   }
@@ -82,18 +97,16 @@ class _AdvisorPageState extends State<AdvisorPage> {
           .map((item) => Map<String, dynamic>.from(item as Map))
           .toList();
 
-      final generatedAt = DateTime.tryParse(
-        saved['generated_at']?.toString() ?? '',
-      );
-
-      final availableAt = DateTime.tryParse(
-        saved['next_available_at']?.toString() ?? '',
-      );
-
       setState(() {
         recommendations = loadedRecommendations;
-        recommendationGeneratedAt = generatedAt;
-        nextAvailableAt = availableAt;
+
+        recommendationGeneratedAt = DateTime.tryParse(
+          saved['generated_at']?.toString() ?? '',
+        );
+
+        nextAvailableAt = DateTime.tryParse(
+          saved['next_available_at']?.toString() ?? '',
+        );
       });
 
       updateCooldown();
@@ -109,7 +122,6 @@ class _AdvisorPageState extends State<AdvisorPage> {
       if (!mounted) return;
 
       final next = nextAvailableAt;
-
       final remaining = next == null
           ? Duration.zero
           : next.difference(DateTime.now());
@@ -133,19 +145,16 @@ class _AdvisorPageState extends State<AdvisorPage> {
     }
   }
 
-  bool get isCooldownActive {
-    return nextAvailableAt != null && DateTime.now().isBefore(nextAvailableAt!);
-  }
+  bool get isCooldownActive =>
+      nextAvailableAt != null && DateTime.now().isBefore(nextAvailableAt!);
 
   String formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return 'Not available';
 
     final local = dateTime.toLocal();
-
     final month = local.month.toString().padLeft(2, '0');
     final day = local.day.toString().padLeft(2, '0');
     final year = local.year;
-
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');
     final period = local.hour >= 12 ? 'PM' : 'AM';
@@ -162,87 +171,70 @@ class _AdvisorPageState extends State<AdvisorPage> {
     return '${days}d ${hours}h ${minutes}m ${seconds}s';
   }
 
-  //TESTTTTT FUNCTIONS
-  void test() async {
-    final previousBudget = await DatabaseHelper.instance
-        .getPreviousMonthBudgetAmount();
-
-    print("Previous Budget: $previousBudget");
-  }
+  // Optional database testing helpers.
 
   Future<void> testAdvisorData() async {
     final data = await DatabaseHelper.instance.getAdvisorData();
-
-    // print(data);
     debugPrint(data.toString());
   }
 
-  void testPatterns() async {
+  Future<void> testPatterns() async {
     final patterns = await DatabaseHelper.instance.getSpendingPatterns();
-
-    print(patterns);
+    debugPrint(patterns.toString());
   }
 
-  void testCategorySpending() async {
+  Future<void> testCategorySpending() async {
     final current = await DatabaseHelper.instance.getCategorySpending();
 
     final previous = await DatabaseHelper.instance.getCategorySpending(
       previousMonth: true,
     );
 
-    print("CURRENT CATEGORY:");
-    print(current);
-
-    print("PREVIOUS CATEGORY:");
-    print(previous);
+    debugPrint('CURRENT CATEGORY: $current');
+    debugPrint('PREVIOUS CATEGORY: $previous');
   }
 
-  void testTransactionCount() async {
+  Future<void> testTransactionCount() async {
     final current = await DatabaseHelper.instance.getExpenseTransactionCount();
 
     final previous = await DatabaseHelper.instance.getExpenseTransactionCount(
       previousMonth: true,
     );
 
-    print("CURRENT MONTH EXPENSE TRANSACTIONS COUNT: $current");
-    print("PREVIOUS MONTH EXPENSE TRANSACTIONS COUNT: $previous");
+    debugPrint('CURRENT MONTH EXPENSE TRANSACTIONS COUNT: $current');
+    debugPrint('PREVIOUS MONTH EXPENSE TRANSACTIONS COUNT: $previous');
   }
 
-  void testPreviousMonthExpense() async {
-    final previousExpense = await DatabaseHelper.instance
+  Future<void> testPreviousMonthExpense() async {
+    final previous = await DatabaseHelper.instance
         .getPreviousMonthExpenseAmount();
 
-    print("PREVIOUS MONTH EXPENSE: $previousExpense");
+    debugPrint('PREVIOUS MONTH EXPENSE: $previous');
   }
 
-  void testRemainingDays() {
-    final days = getRemainingDays();
-
-    print("REMAINING DAYS: $days");
-  }
-
-  int getRemainingDays() {
-    final now = DateTime.now();
-
-    final today = DateTime(now.year, now.month, now.day);
-
-    final lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
-
-    return lastDayOfMonth.difference(today).inDays;
-  }
-
-  void testRemainingBudget() async {
+  Future<void> testRemainingBudget() async {
     final budget = await DatabaseHelper.instance.getCurrentBudgetAmount();
 
     final expenses = await DatabaseHelper.instance.getCurrentExpenseAmount();
 
-    final remaining = budget - expenses;
-
-    print("CURRENT BUDGET: $budget");
-    print("CURRENT EXPENSE: $expenses");
-    print("REMAINING BUDGET: $remaining");
+    debugPrint('CURRENT BUDGET: $budget');
+    debugPrint('CURRENT EXPENSE: $expenses');
+    debugPrint('REMAINING BUDGET: ${budget - expenses}');
   }
-  //TESTTTT FUNCTIONS
+
+  Future<void> testPreviousBudget() async {
+    final budget = await DatabaseHelper.instance.getPreviousMonthBudgetAmount();
+
+    debugPrint('Previous Budget: $budget');
+  }
+
+  int getRemainingDays() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
+
+    return lastDayOfMonth.difference(today).inDays;
+  }
 
   Future<void> checkInternet() async {
     try {
@@ -255,7 +247,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
       }
 
       final response = await http
-          .get(Uri.parse("https://www.google.com"))
+          .get(Uri.parse('https://www.google.com'))
           .timeout(const Duration(seconds: 5));
 
       if (!mounted) return;
@@ -264,7 +256,7 @@ class _AdvisorPageState extends State<AdvisorPage> {
         hasInternet = response.statusCode == 200;
       });
     } catch (e) {
-      debugPrint("Internet check failed: $e");
+      debugPrint('Internet check failed: $e');
 
       if (!mounted) return;
 
@@ -278,49 +270,59 @@ class _AdvisorPageState extends State<AdvisorPage> {
   void dispose() {
     countdownTimer?.cancel();
     connectivitySubscription?.cancel();
-
     super.dispose();
   }
 
   Future<void> refresh() async {
     await checkInternet();
-    await testAdvisorData();
+    await loadSavedRecommendation();
   }
 
   void showAIConfirmation() {
     if (!hasInternet) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Internet connection is required for AI advice."),
+          content: Text('Internet connection is required for AI advice.'),
         ),
       );
-
       return;
     }
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
-          title: const Text("Generate AI Advice?"),
-          content: const Text(
-            "Your expense, budget, spending pattern, and profile information "
-            "will be analyzed to create personalized financial recommendations.",
+          backgroundColor: _card,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: _border),
+          ),
+          title: Text(
+            'Generate AI Advice?',
+            style: TextStyle(color: _text, fontWeight: FontWeight.w800),
+          ),
+          content: Text(
+            'Your expense, budget, spending pattern, and profile '
+            'information will be analyzed to create personalized '
+            'financial recommendations.',
+            style: TextStyle(color: _muted, height: 1.5, fontSize: 13),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("Cancel"),
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Cancel', style: TextStyle(color: _muted)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _advisorPrimary,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () async {
-                Navigator.pop(context);
-
+                Navigator.pop(dialogContext);
                 await generateAIAdvice();
               },
-              child: const Text("Generate"),
+              child: const Text('Generate'),
             ),
           ],
         );
@@ -338,6 +340,15 @@ class _AdvisorPageState extends State<AdvisorPage> {
       return;
     }
 
+    if (!hasInternet) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Internet connection is required for AI advice.'),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       isGenerating = true;
     });
@@ -349,7 +360,6 @@ class _AdvisorPageState extends State<AdvisorPage> {
         spendingData: spendingData,
       );
 
-      // Save only a successful, non-empty result.
       if (result.isEmpty) {
         throw Exception('No recommendations were returned.');
       }
@@ -359,8 +369,6 @@ class _AdvisorPageState extends State<AdvisorPage> {
         recommendations: result,
       );
 
-      // Reload the saved record so the displayed timestamps
-      // match the values stored in SQLite.
       final saved = await DatabaseHelper.instance.getSavedAIRecommendation(
         userId: 1,
       );
@@ -408,144 +416,130 @@ class _AdvisorPageState extends State<AdvisorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: _background,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: _background,
+        foregroundColor: _text,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          "Advisor",
+        centerTitle: false,
+        title: Text(
+          'Advisor',
           style: TextStyle(
-            color: _advisorText,
+            color: _text,
             fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),
       body: RefreshIndicator(
         onRefresh: refresh,
-        color: _advisorPurple,
-        child: SingleChildScrollView(
+        color: _purple,
+        backgroundColor: _card,
+        child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Showcase(
-                key: widget.advisorKey,
-                title: "AI Financial Advisor",
-                description:
-                    "Get personalized financial recommendations based on "
-                    "your recorded spending and budget information.",
-                targetBorderRadius: BorderRadius.circular(16),
-                overlayOpacity: 0.65,
-                tooltipBackgroundColor: _advisorPurple,
-                tooltipBorderRadius: BorderRadius.circular(16),
-                tooltipPadding: const EdgeInsets.all(16),
-                textColor: Colors.white,
-                titleTextStyle: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                descTextStyle: const TextStyle(
-                  fontSize: 14,
-                  height: 1.4,
-                  color: Colors.white,
-                ),
-                child: _buildAdvisorStatusCard(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+          children: [
+            Showcase(
+              key: widget.advisorKey,
+              title: 'AI Financial Advisor',
+              description:
+                  'Get personalized financial recommendations based '
+                  'on your recorded spending and budget information.',
+              targetBorderRadius: BorderRadius.circular(18),
+              overlayOpacity: 0.65,
+              tooltipBackgroundColor: _advisorPrimary,
+              tooltipBorderRadius: BorderRadius.circular(16),
+              tooltipPadding: const EdgeInsets.all(16),
+              textColor: Colors.white,
+              titleTextStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
-
-              const SizedBox(height: 24),
-
-              Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 23,
-                    decoration: BoxDecoration(
-                      color: _advisorPurple,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  const Expanded(
-                    child: Text(
-                      "Your Recommendations",
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                        color: _advisorText,
-                      ),
-                    ),
-                  ),
-                  if (recommendations.isNotEmpty)
-                    Container(
+              descTextStyle: const TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: Colors.white,
+              ),
+              child: _buildAdvisorStatusCard(),
+            ),
+            const SizedBox(height: 24),
+            _sectionHeading(
+              'Your Recommendations',
+              'Personalized suggestions based on your recorded finances.',
+              trailing: recommendations.isEmpty
+                  ? null
+                  : Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
+                        horizontal: 11,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: _advisorPurple.withValues(alpha: 0.09),
+                        color: _softPurple,
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _border),
                       ),
                       child: Text(
-                        "${recommendations.length}",
-                        style: const TextStyle(
-                          color: _advisorPurple,
-                          fontWeight: FontWeight.w700,
+                        '${recommendations.length}',
+                        style: TextStyle(
+                          color: _purple,
+                          fontWeight: FontWeight.w800,
                           fontSize: 12,
                         ),
                       ),
                     ),
-                ],
+            ),
+            const SizedBox(height: 14),
+            if (isGenerating)
+              _buildLoadingCard()
+            else if (recommendations.isEmpty)
+              _buildEmptyRecommendations()
+            else
+              ...recommendations.map(_buildRecommendationCard),
+            const SizedBox(height: 12),
+            _buildInformationNote(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionHeading(String title, String subtitle, {Widget? trailing}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 4,
+          height: 43,
+          decoration: BoxDecoration(
+            color: _purple,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: _text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-
-              const SizedBox(height: 14),
-
-              if (isGenerating)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 30),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _advisorBorder),
-                  ),
-                  child: const Column(
-                    children: [
-                      CircularProgressIndicator(
-                        color: _advisorPurple,
-                        strokeWidth: 3,
-                      ),
-                      SizedBox(height: 14),
-                      Text(
-                        "Analyzing your spending...",
-                        style: TextStyle(
-                          color: _advisorText,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        "Preparing personalized recommendations",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: _advisorMuted, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                )
-              else if (recommendations.isEmpty)
-                _buildEmptyRecommendations()
-              else
-                ...recommendations.map(_buildRecommendationCard),
-
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(color: _muted, fontSize: 12, height: 1.4),
+              ),
             ],
           ),
         ),
-      ),
+        if (trailing != null) ...[const SizedBox(width: 8), trailing],
+      ],
     );
   }
 
@@ -553,19 +547,19 @@ class _AdvisorPageState extends State<AdvisorPage> {
     final statusColor = hasInternet ? _advisorGreen : _advisorRed;
 
     final statusText = hasInternet
-        ? "Internet Connected"
-        : "No Internet Connection";
+        ? 'Internet Connected'
+        : 'No Internet Connection';
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _advisorBorder),
+        color: _card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: _advisorPurple.withValues(alpha: 0.035),
+            color: _purple.withValues(alpha: _isDark ? 0.06 : 0.035),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -577,49 +571,50 @@ class _AdvisorPageState extends State<AdvisorPage> {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(12),
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(
                   hasInternet
                       ? Icons.cloud_done_rounded
                       : Icons.cloud_off_rounded,
                   color: statusColor,
-                  size: 22,
+                  size: 23,
                 ),
               ),
-              const SizedBox(width: 11),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       statusText,
-                      style: const TextStyle(
-                        color: _advisorText,
-                        fontWeight: FontWeight.w700,
+                      style: TextStyle(
+                        color: _text,
+                        fontWeight: FontWeight.w800,
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       hasInternet
-                          ? "Ready to connect to the AI advisor"
-                          : "Check your connection to use AI advice",
-                      style: const TextStyle(
-                        color: _advisorMuted,
+                          ? 'Ready to connect to the AI advisor'
+                          : 'Check your connection to use AI advice',
+                      style: TextStyle(
+                        color: _muted,
                         fontSize: 11,
+                        height: 1.4,
                       ),
                     ),
                   ],
                 ),
               ),
               Container(
-                width: 8,
-                height: 8,
+                width: 9,
+                height: 9,
                 decoration: BoxDecoration(
                   color: statusColor,
                   shape: BoxShape.circle,
@@ -627,98 +622,86 @@ class _AdvisorPageState extends State<AdvisorPage> {
               ),
             ],
           ),
-
+          const SizedBox(height: 17),
+          Divider(height: 1, color: _border),
           const SizedBox(height: 16),
-          Container(height: 1, color: const Color(0xFFE2DFEC)),
-          const SizedBox(height: 15),
-
           if (isCooldownActive) ...[
-            const Text(
-              "NEXT RECOMMENDATION AVAILABLE IN",
+            Text(
+              'NEXT RECOMMENDATION AVAILABLE IN',
               style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 0.7,
-                fontWeight: FontWeight.w700,
-                color: _advisorMuted,
+                fontWeight: FontWeight.w800,
+                color: _muted,
               ),
             ),
-            const SizedBox(height: 7),
+            const SizedBox(height: 9),
             Row(
               children: [
-                const Icon(
-                  Icons.schedule_rounded,
-                  color: _advisorPurple,
-                  size: 21,
-                ),
-                const SizedBox(width: 8),
+                Icon(Icons.schedule_rounded, color: _purple, size: 22),
+                const SizedBox(width: 9),
                 Expanded(
                   child: Text(
                     formatDuration(cooldownRemaining),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      color: _advisorPurple,
+                      fontWeight: FontWeight.w900,
+                      color: _purple,
                     ),
                   ),
                 ),
               ],
             ),
-          ] else
+          ] else ...[
             Text(
               recommendations.isEmpty
-                  ? "Generate AI advice to receive personalized recommendations "
-                        "based on your spending habits."
-                  : "You can generate new advice now.",
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.45,
-                color: _advisorMuted,
-              ),
+                  ? 'Generate AI advice to receive personalized '
+                        'recommendations based on your spending habits.'
+                  : 'You can generate new advice now.',
+              style: TextStyle(fontSize: 13, height: 1.5, color: _muted),
             ),
-
+          ],
           if (recommendationGeneratedAt != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 15),
             _buildTimestampRow(
               Icons.history_rounded,
-              "Last generated",
+              'Last generated',
               formatDateTime(recommendationGeneratedAt),
             ),
           ],
-
           if (nextAvailableAt != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 9),
             _buildTimestampRow(
               Icons.event_available_rounded,
-              "Next available",
+              'Next available',
               formatDateTime(nextAvailableAt),
             ),
           ],
-
-          const SizedBox(height: 16),
-
+          const SizedBox(height: 17),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 49,
             child: ElevatedButton.icon(
               onPressed: hasInternet && !isGenerating && !isCooldownActive
                   ? showAIConfirmation
                   : null,
-              icon: const Icon(Icons.psychology_rounded, size: 20),
+              icon: const Icon(Icons.psychology_rounded, size: 21),
               label: const Text(
-                "Generate AI Advice",
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                'Generate AI Advice',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _advisorPurple,
+                backgroundColor: _advisorPrimary,
                 foregroundColor: Colors.white,
-
-                // Gray when a recommendation is on cooldown or internet is unavailable.
-                disabledBackgroundColor: const Color(0xFFE5E3EB),
-                disabledForegroundColor: const Color(0xFF777386),
-
+                disabledBackgroundColor: _isDark
+                    ? const Color(0xFF393246)
+                    : const Color(0xFFE5E3EB),
+                disabledForegroundColor: _isDark
+                    ? const Color(0xFF928BA8)
+                    : const Color(0xFF777386),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(13),
                 ),
               ),
             ),
@@ -732,94 +715,156 @@ class _AdvisorPageState extends State<AdvisorPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 15, color: _advisorMuted),
-        const SizedBox(width: 7),
+        Icon(icon, size: 16, color: _subtle),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
-            "$label: $value",
-            style: const TextStyle(
-              color: _advisorMuted,
-              fontSize: 11,
-              height: 1.4,
-            ),
+            '$label: $value',
+            style: TextStyle(color: _muted, fontSize: 11, height: 1.4),
           ),
         ),
       ],
     );
   }
 
+  Widget _buildLoadingCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: _softPurple,
+              borderRadius: BorderRadius.circular(17),
+            ),
+            child: Center(
+              child: SizedBox(
+                width: 27,
+                height: 27,
+                child: CircularProgressIndicator(
+                  color: _purple,
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Analyzing your spending...',
+            style: TextStyle(
+              color: _text,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Preparing personalized recommendations',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _muted, fontSize: 12, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRecommendationCard(Map<String, dynamic> recommendation) {
-    final title = recommendation["title"]?.toString() ?? "Recommendation";
-    final message = recommendation["message"]?.toString() ?? "";
-    final type = recommendation["type"]?.toString() ?? "general";
+    final title = recommendation['title']?.toString() ?? 'Recommendation';
+
+    final message = recommendation['message']?.toString() ?? '';
+
+    final type = recommendation['type']?.toString() ?? 'general';
 
     IconData icon = Icons.lightbulb_outline_rounded;
-    Color accent = _advisorPurple;
-    Color tint = const Color(0xFFF0ECFF);
+    Color accent = _advisorPrimary;
+    Color lightTint = const Color(0xFFEAE3FF);
 
     switch (type) {
-      case "budget":
+      case 'budget':
         icon = Icons.account_balance_wallet_outlined;
         accent = const Color(0xFF6545D6);
-        tint = const Color(0xFFEAE3FF);
+        lightTint = const Color(0xFFEAE3FF);
         break;
 
-      case "food":
+      case 'food':
         icon = Icons.restaurant_outlined;
         accent = const Color(0xFFE07816);
-        tint = const Color(0xFFFFE8CF);
+        lightTint = const Color(0xFFFFE8CF);
         break;
 
-      case "transportation":
+      case 'transportation':
         icon = Icons.directions_bus_outlined;
         accent = const Color(0xFF2374D8);
-        tint = const Color(0xFFDCEBFF);
+        lightTint = const Color(0xFFDCEBFF);
         break;
 
-      case "saving":
+      case 'saving':
         icon = Icons.savings_outlined;
-        accent = const Color(0xFF079669);
-        tint = const Color(0xFFD7F5E8);
+        accent = _advisorGreen;
+        lightTint = const Color(0xFFD7F5E8);
         break;
 
-      case "spending":
+      case 'spending':
         icon = Icons.trending_up_rounded;
-        accent = const Color(0xFFE04444);
-        tint = const Color(0xFFFFDEDE);
+        accent = _advisorRed;
+        lightTint = const Color(0xFFFFDEDE);
         break;
 
-      case "warning":
+      case 'warning':
         icon = Icons.warning_amber_rounded;
         accent = const Color(0xFFB77900);
-        tint = const Color(0xFFFFEDB5);
+        lightTint = const Color(0xFFFFEDB5);
         break;
 
       default:
         icon = Icons.lightbulb_outline_rounded;
         accent = const Color(0xFF6545D6);
-        tint = const Color(0xFFEAE3FF);
+        lightTint = const Color(0xFFEAE3FF);
         break;
     }
 
+    final tint = _isDark ? _surface : lightTint;
+
+    final iconSurface = _isDark ? const Color(0xFF393246) : Colors.white;
+
+    final titleColor = _isDark ? _text : accent;
+
+    final messageColor = _isDark
+        ? _advisorDarkMessageColor
+        : const Color(0xFF514D66);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: tint,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accent.withValues(alpha: 0.12)),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: _isDark
+              ? accent.withValues(alpha: 0.22)
+              : accent.withValues(alpha: 0.12),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 43,
+            height: 43,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(12),
+              color: iconSurface,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: _border.withValues(alpha: 0.65)),
             ),
-            child: Icon(icon, color: accent, size: 22),
+            child: Icon(icon, color: _isDark ? _purple : accent, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -831,17 +876,17 @@ class _AdvisorPageState extends State<AdvisorPage> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: accent,
+                    color: titleColor,
                   ),
                 ),
                 if (message.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 7),
                   Text(
                     message,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      height: 1.5,
-                      color: Color(0xFF514D66),
+                      height: 1.55,
+                      color: messageColor,
                     ),
                   ),
                 ],
@@ -856,45 +901,69 @@ class _AdvisorPageState extends State<AdvisorPage> {
   Widget _buildEmptyRecommendations() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+      padding: const EdgeInsets.fromLTRB(24, 30, 24, 30),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _advisorBorder),
+        color: _card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _border),
       ),
       child: Column(
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: _advisorPurple.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
+              color: _softPurple,
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(
-              Icons.psychology_alt_rounded,
-              color: _advisorPurple,
-              size: 30,
-            ),
+            child: Icon(Icons.psychology_alt_rounded, color: _purple, size: 33),
           ),
-          const SizedBox(height: 14),
-          const Text(
-            "No recommendations yet",
+          const SizedBox(height: 16),
+          Text(
+            'No recommendations yet',
             style: TextStyle(
               fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: _advisorText,
+              fontWeight: FontWeight.w800,
+              color: _text,
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            "Generate AI advice to get insights and suggestions "
-            "based on your spending habits.",
+          const SizedBox(height: 7),
+          Text(
+            'Generate AI advice to get insights and suggestions '
+            'based on your spending habits.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, height: 1.5, color: _advisorMuted),
+            style: TextStyle(fontSize: 12, height: 1.55, color: _muted),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInformationNote() {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: _softPurple,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, color: _purple, size: 19),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              'Recommendations are based on your saved financial '
+              'records. Review each suggestion and decide whether '
+              'it fits your needs and budget.',
+              style: TextStyle(fontSize: 11, height: 1.5, color: _muted),
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+const Color _advisorDarkMessageColor = Color(0xFFB7B2C8);

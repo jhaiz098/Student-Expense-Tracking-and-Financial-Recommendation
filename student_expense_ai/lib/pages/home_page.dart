@@ -220,7 +220,7 @@ class _HomePageState extends State<HomePage> {
               title: 'Monthly Budget',
               description:
                   'This shows your monthly budget, total spending, and remaining amount.',
-              targetBorderRadius: BorderRadius.circular(18),
+              targetBorderRadius: BorderRadius.circular(22),
               overlayColor: Colors.black,
               overlayOpacity: 0.65,
               tooltipBackgroundColor: _primary,

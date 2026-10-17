@@ -3,10 +3,17 @@ import '../database/database_helper.dart';
 import 'main_page.dart';
 
 const Color _profilePurple = Color(0xFF5B45B5);
+const Color _profileDarkPurple = Color(0xFFB9A8FF);
 const Color _profileBackground = Color(0xFFF7F7FB);
+const Color _profileDarkBackground = Color(0xFF15131E);
+const Color _profileDarkCard = Color(0xFF211D2D);
 const Color _profileBorder = Color(0xFFE7E4F0);
+const Color _profileDarkBorder = Color(0xFF393246);
 const Color _profileText = Color(0xFF29263A);
+const Color _profileDarkText = Color(0xFFF5F2FF);
 const Color _profileMuted = Color(0xFF6F6B82);
+const Color _profileDarkMuted = Color(0xFFB7B2C8);
+const Color _profileRed = Color(0xFFE05252);
 
 class ProfilePage extends StatefulWidget {
   final bool isFirstSetup;
@@ -40,6 +47,24 @@ class _ProfilePageState extends State<ProfilePage> {
       selectedStatus == 'Student' || selectedStatus == 'Working Student';
 
   bool get isWorking => selectedStatus == 'Working Student';
+
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _background =>
+      _isDark ? _profileDarkBackground : _profileBackground;
+
+  Color get _card => _isDark ? _profileDarkCard : Colors.white;
+
+  Color get _border => _isDark ? _profileDarkBorder : _profileBorder;
+
+  Color get _text => _isDark ? _profileDarkText : _profileText;
+
+  Color get _muted => _isDark ? _profileDarkMuted : _profileMuted;
+
+  Color get _accent => _isDark ? _profileDarkPurple : _profilePurple;
+
+  Color get _fieldBackground =>
+      _isDark ? const Color(0xFF2A2538) : _profileBackground;
 
   @override
   void initState() {
@@ -76,12 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       setState(() => isLoading = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to load your profile. Please try again.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showMessage('Unable to load your profile. Please try again.');
     }
   }
 
@@ -100,11 +120,20 @@ class _ProfilePageState extends State<ProfilePage> {
       firstDate: DateTime(1900),
       lastDate: now,
       builder: (context, child) {
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        final accent = dark ? _profileDarkPurple : _profilePurple;
+        final background = dark ? _profileDarkCard : Colors.white;
+        final textColor = dark ? _profileDarkText : _profileText;
+
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(
-              context,
-            ).colorScheme.copyWith(primary: _profilePurple),
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: accent,
+              onPrimary: dark ? _profileDarkBackground : Colors.white,
+              surface: background,
+              onSurface: textColor,
+            ),
+            dialogTheme: DialogThemeData(backgroundColor: background),
           ),
           child: child!,
         );
@@ -167,10 +196,14 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainPage(showTutorial: true)),
-      );
+      if (widget.isFirstSetup) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainPage(showTutorial: true)),
+        );
+      } else {
+        Navigator.pop(context);
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -183,7 +216,11 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: _isDark ? _profileDarkCard : null,
+      ),
     );
   }
 
@@ -198,10 +235,10 @@ class _ProfilePageState extends State<ProfilePage> {
               width: 39,
               height: 39,
               decoration: BoxDecoration(
-                color: _profilePurple.withValues(alpha: 0.11),
+                color: _accent.withValues(alpha: 0.13),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: _profilePurple, size: 21),
+              child: Icon(icon, color: _accent, size: 21),
             ),
             const SizedBox(width: 12),
           ],
@@ -211,8 +248,8 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: _profileText,
+                  style: TextStyle(
+                    color: _text,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                   ),
@@ -221,11 +258,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: _profileMuted,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
+                    style: TextStyle(color: _muted, fontSize: 12, height: 1.4),
                   ),
                 ],
               ],
@@ -236,32 +269,16 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _sectionCard({required Widget child}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? Colors.white12 : _profileBorder),
-      ),
-      child: child,
-    );
-  }
-
   Widget _textField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
     String? hint,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return TextFormField(
       controller: controller,
       textCapitalization: TextCapitalization.words,
+      style: TextStyle(color: _text, fontSize: 14),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
           return 'Please enter ${label.toLowerCase()}';
@@ -270,35 +287,35 @@ class _ProfilePageState extends State<ProfilePage> {
       },
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(color: _muted),
         hintText: hint,
-        prefixIcon: Icon(icon, color: _profilePurple, size: 21),
+        hintStyle: TextStyle(color: _muted),
+        prefixIcon: Icon(icon, color: _accent, size: 21),
         filled: true,
-        fillColor: isDark
-            ? Theme.of(context).colorScheme.surface
-            : _profileBackground,
+        fillColor: _fieldBackground,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 15,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _profileBorder),
+          borderSide: BorderSide(color: _border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _profileBorder),
+          borderSide: BorderSide(color: _border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _profilePurple, width: 1.5),
+          borderSide: BorderSide(color: _accent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE04444)),
+          borderSide: const BorderSide(color: _profileRed),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE04444), width: 1.5),
+          borderSide: const BorderSide(color: _profileRed, width: 1.5),
         ),
       ),
     );
@@ -306,7 +323,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _dateOfBirthField() {
     final date = selectedDateOfBirth;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final dateText = date == null
         ? 'Select your date of birth'
@@ -322,34 +338,29 @@ class _ProfilePageState extends State<ProfilePage> {
         child: InputDecorator(
           decoration: InputDecoration(
             labelText: 'Date of Birth',
-            prefixIcon: const Icon(
-              Icons.calendar_month_rounded,
-              color: _profilePurple,
-            ),
-            suffixIcon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: _profileMuted,
-            ),
+            labelStyle: TextStyle(color: _muted),
+            prefixIcon: Icon(Icons.calendar_month_rounded, color: _accent),
+            suffixIcon: Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
             filled: true,
-            fillColor: isDark
-                ? Theme.of(context).colorScheme.surface
-                : _profileBackground,
+            fillColor: _fieldBackground,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _profileBorder),
+              borderSide: BorderSide(color: _border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _profileBorder),
+              borderSide: BorderSide(color: _border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _accent, width: 1.5),
             ),
           ),
           child: Text(
             dateText,
             style: TextStyle(
               fontSize: 14,
-              color: date == null
-                  ? _profileMuted
-                  : Theme.of(context).colorScheme.onSurface,
+              color: date == null ? _muted : _text,
             ),
           ),
         ),
@@ -358,11 +369,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _statusSelector() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return DropdownButtonFormField<String>(
-      value: selectedStatus,
+      initialValue: selectedStatus,
       isExpanded: true,
+      dropdownColor: _card,
+      style: TextStyle(color: _text, fontSize: 14),
       validator: (value) {
         if (value == null) {
           return 'Please select your current status';
@@ -371,30 +382,29 @@ class _ProfilePageState extends State<ProfilePage> {
       },
       decoration: InputDecoration(
         labelText: 'Current Status',
-        prefixIcon: const Icon(
-          Icons.work_outline_rounded,
-          color: _profilePurple,
-        ),
+        labelStyle: TextStyle(color: _muted),
+        prefixIcon: Icon(Icons.work_outline_rounded, color: _accent),
         filled: true,
-        fillColor: isDark
-            ? Theme.of(context).colorScheme.surface
-            : _profileBackground,
+        fillColor: _fieldBackground,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _profileBorder),
+          borderSide: BorderSide(color: _border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _profileBorder),
+          borderSide: BorderSide(color: _border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _profilePurple, width: 1.5),
+          borderSide: BorderSide(color: _accent, width: 1.5),
         ),
       ),
-      hint: const Text('Select your current status'),
+      hint: Text('Select your current status', style: TextStyle(color: _muted)),
       items: statuses.map((status) {
-        return DropdownMenuItem<String>(value: status, child: Text(status));
+        return DropdownMenuItem<String>(
+          value: status,
+          child: Text(status, style: TextStyle(color: _text)),
+        );
       }).toList(),
       onChanged: (value) {
         setState(() => selectedStatus = value);
@@ -404,40 +414,28 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return PopScope(
       canPop: !widget.isFirstSetup,
       child: Scaffold(
-        backgroundColor: isDark
-            ? Theme.of(context).scaffoldBackgroundColor
-            : _profileBackground,
+        backgroundColor: _background,
         appBar: AppBar(
           title: Text(
             widget.isFirstSetup ? 'Set Up Your Profile' : 'My Profile',
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: TextStyle(color: _text, fontWeight: FontWeight.w800),
           ),
           centerTitle: true,
           automaticallyImplyLeading: !widget.isFirstSetup,
-          backgroundColor: isDark
-              ? Theme.of(context).scaffoldBackgroundColor
-              : _profileBackground,
-          surfaceTintColor: Colors.transparent,
+          backgroundColor: _background,
+          foregroundColor: _text,
           elevation: 0,
         ),
         body: isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: _profilePurple),
-              )
+            ? Center(child: CircularProgressIndicator(color: _accent))
             : Form(
                 key: _formKey,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 35),
-
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 35),
                   children: [
-                    const SizedBox(height: 12),
-
-                    // Basic Information — no outer card
                     _sectionTitle(
                       'Basic Information',
                       subtitle: 'Tell us about yourself.',
@@ -512,9 +510,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: ElevatedButton(
                         onPressed: isSaving ? null : saveProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _profilePurple,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: _profilePurple.withValues(
+                          backgroundColor: _accent,
+                          foregroundColor: _isDark
+                              ? _profileDarkBackground
+                              : Colors.white,
+                          disabledBackgroundColor: _accent.withValues(
                             alpha: 0.55,
                           ),
                           elevation: 0,
@@ -557,23 +557,20 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     if (widget.isFirstSetup) ...[
                       const SizedBox(height: 13),
-                      const Row(
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.lock_outline_rounded,
-                            color: _profileMuted,
+                            color: _muted,
                             size: 14,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Flexible(
                             child: Text(
                               'Your information helps personalize your experience.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: _profileMuted,
-                                fontSize: 11,
-                              ),
+                              style: TextStyle(color: _muted, fontSize: 11),
                             ),
                           ),
                         ],

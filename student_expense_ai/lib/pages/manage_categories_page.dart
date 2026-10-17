@@ -3,11 +3,17 @@ import '../database/database_helper.dart';
 import '../models/category.dart';
 
 const Color _categoryPurple = Color(0xFF5B45B5);
+const Color _categoryDarkPurple = Color(0xFFB9A8FF);
 const Color _categoryBackground = Color(0xFFF7F7FB);
+const Color _categoryDarkBackground = Color(0xFF15131E);
+const Color _categoryDarkCard = Color(0xFF211D2D);
 const Color _categoryBorder = Color(0xFFE7E4F0);
+const Color _categoryDarkBorder = Color(0xFF393246);
 const Color _categoryText = Color(0xFF29263A);
+const Color _categoryDarkText = Color(0xFFF5F2FF);
 const Color _categoryMuted = Color(0xFF6F6B82);
-const Color _categoryRed = Color(0xFFE04444);
+const Color _categoryDarkMuted = Color(0xFFB7B2C8);
+const Color _categoryRed = Color(0xFFE05252);
 
 class ManageCategoriesPage extends StatefulWidget {
   const ManageCategoriesPage({super.key});
@@ -20,6 +26,27 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   String selectedType = "Expense";
   List<Category> categories = [];
   bool isLoading = true;
+
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _background =>
+      _isDark ? _categoryDarkBackground : _categoryBackground;
+
+  Color get _card => _isDark ? _categoryDarkCard : Colors.white;
+
+  Color get _border => _isDark ? _categoryDarkBorder : _categoryBorder;
+
+  Color get _text => _isDark ? _categoryDarkText : _categoryText;
+
+  Color get _muted => _isDark ? _categoryDarkMuted : _categoryMuted;
+
+  Color get _accent => _isDark ? _categoryDarkPurple : _categoryPurple;
+
+  Color get _softSurface =>
+      _isDark ? const Color(0xFF2A2538) : const Color(0xFFFAFAFD);
+
+  Color get _softPurple =>
+      _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
 
   @override
   void initState() {
@@ -52,9 +79,25 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: TextStyle(
+              color: isDark ? _categoryText : Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: isDark ? Colors.white : _categoryPurple,
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+      );
   }
 
   Future<void> showCategoryDialog({Category? category}) async {
@@ -62,11 +105,11 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       context: context,
       builder: (_) => _CategoryEditorDialog(
         category: category,
+        isDark: _isDark,
         showIconPicker: showIconPicker,
       ),
     );
 
-    // Cancel returns null and does not touch the database.
     if (result == null || !mounted) return;
 
     try {
@@ -187,18 +230,23 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     return showDialog<IconData>(
       context: context,
       builder: (pickerContext) {
+        final dark = Theme.of(pickerContext).brightness == Brightness.dark;
+        final accent = dark ? _categoryDarkPurple : _categoryPurple;
+        final textColor = dark ? _categoryDarkText : _categoryText;
+        final cardColor = dark ? _categoryDarkCard : Colors.white;
+
         return AlertDialog(
-          backgroundColor: Theme.of(pickerContext).cardColor,
+          backgroundColor: cardColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
           ),
           title: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   "Choose Icon",
                   style: TextStyle(
-                    color: _categoryText,
+                    color: textColor,
                     fontWeight: FontWeight.w800,
                     fontSize: 19,
                   ),
@@ -207,7 +255,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               IconButton(
                 tooltip: "Close",
                 onPressed: () => Navigator.pop(pickerContext),
-                icon: const Icon(Icons.close_rounded),
+                icon: Icon(Icons.close_rounded, color: textColor),
               ),
             ],
           ),
@@ -223,14 +271,14 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               ),
               itemBuilder: (context, index) {
                 return Material(
-                  color: _categoryPurple.withValues(alpha: 0.08),
+                  color: accent.withValues(alpha: dark ? 0.16 : 0.08),
                   borderRadius: BorderRadius.circular(12),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () {
                       Navigator.pop(pickerContext, icons[index]);
                     },
-                    child: Icon(icons[index], size: 25, color: _categoryPurple),
+                    child: Icon(icons[index], size: 25, color: accent),
                   ),
                 );
               },
@@ -249,24 +297,40 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
       if (!mounted) return;
 
-      // Preserve the last remaining category.
       if (allCategories.length <= 1) {
         await showDialog<void>(
           context: context,
           builder: (dialogContext) {
+            final dark = Theme.of(dialogContext).brightness == Brightness.dark;
+
             return AlertDialog(
+              backgroundColor: dark ? _categoryDarkCard : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: const Text("Cannot Delete Category"),
-              content: const Text(
+              title: Text(
+                "Cannot Delete Category",
+                style: TextStyle(
+                  color: dark ? _categoryDarkText : _categoryText,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              content: Text(
                 "This is the only category available. "
                 "Add another category before deleting it.",
+                style: TextStyle(
+                  color: dark ? _categoryDarkMuted : _categoryMuted,
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text("OK"),
+                  child: Text(
+                    "OK",
+                    style: TextStyle(
+                      color: dark ? _categoryDarkPurple : _categoryPurple,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -280,26 +344,40 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
       if (!mounted) return;
 
-      // If the category is unused, ask for confirmation.
       if (transactionCount == 0) {
         final confirm = await showDialog<bool>(
           context: context,
           builder: (dialogContext) {
+            final dark = Theme.of(dialogContext).brightness == Brightness.dark;
+
             return AlertDialog(
+              backgroundColor: dark ? _categoryDarkCard : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: const Text("Delete Category?"),
+              title: Text(
+                "Delete Category?",
+                style: TextStyle(
+                  color: dark ? _categoryDarkText : _categoryText,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               content: Text(
                 'Delete "${category.name}"?\n\n'
                 'This category is not used by any transactions.',
+                style: TextStyle(
+                  color: dark ? _categoryDarkMuted : _categoryMuted,
+                  height: 1.5,
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text(
+                  child: Text(
                     "Cancel",
-                    style: TextStyle(color: _categoryMuted),
+                    style: TextStyle(
+                      color: dark ? _categoryDarkMuted : _categoryMuted,
+                    ),
                   ),
                 ),
                 TextButton(
@@ -325,7 +403,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         return;
       }
 
-      // Preserve transactions by requiring a replacement category.
+      // Preserve existing transactions by choosing a replacement.
       final replacementCategories = allCategories
           .where((item) => item.id != category.id)
           .toList();
@@ -335,17 +413,27 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) {
+          final dark = Theme.of(dialogContext).brightness == Brightness.dark;
+          final textColor = dark ? _categoryDarkText : _categoryText;
+          final mutedColor = dark ? _categoryDarkMuted : _categoryMuted;
+          final accent = dark ? _categoryDarkPurple : _categoryPurple;
+          final cardColor = dark ? _categoryDarkCard : Colors.white;
+          final borderColor = dark ? _categoryDarkBorder : _categoryBorder;
+          final fieldColor = dark
+              ? const Color(0xFF2A2538)
+              : _categoryBackground;
+
           return StatefulBuilder(
             builder: (context, setDialogState) {
               return AlertDialog(
-                backgroundColor: Theme.of(context).cardColor,
+                backgroundColor: cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(22),
                 ),
                 title: Text(
                   'Delete "${category.name}"?',
-                  style: const TextStyle(
-                    color: _categoryText,
+                  style: TextStyle(
+                    color: textColor,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -358,10 +446,12 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                       Container(
                         padding: const EdgeInsets.all(13),
                         decoration: BoxDecoration(
-                          color: _categoryRed.withValues(alpha: 0.08),
+                          color: _categoryRed.withValues(
+                            alpha: dark ? 0.14 : 0.08,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _categoryRed.withValues(alpha: 0.18),
+                            color: _categoryRed.withValues(alpha: 0.25),
                           ),
                         ),
                         child: Row(
@@ -377,8 +467,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                                 "This category is used by "
                                 "$transactionCount transaction"
                                 "${transactionCount == 1 ? '' : 's'}.",
-                                style: const TextStyle(
-                                  color: _categoryText,
+                                style: TextStyle(
+                                  color: textColor,
                                   fontSize: 13,
                                   height: 1.4,
                                 ),
@@ -388,36 +478,39 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
+                      Text(
                         "Move transactions to",
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: _categoryText,
+                          color: textColor,
                         ),
                       ),
                       const SizedBox(height: 9),
                       DropdownButtonFormField<Category>(
                         value: selectedReplacement,
                         isExpanded: true,
+                        dropdownColor: cardColor,
+                        style: TextStyle(color: textColor),
                         decoration: InputDecoration(
                           hintText: "Select replacement category",
+                          hintStyle: TextStyle(color: mutedColor),
                           filled: true,
-                          fillColor: _categoryBackground,
+                          fillColor: fieldColor,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 12,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: _categoryBorder,
-                            ),
+                            borderSide: BorderSide(color: borderColor),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: _categoryBorder,
-                            ),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: accent, width: 1.5),
                           ),
                         ),
                         items: replacementCategories.map((item) {
@@ -425,11 +518,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                             value: item,
                             child: Row(
                               children: [
-                                Icon(
-                                  item.icon,
-                                  color: _categoryPurple,
-                                  size: 21,
-                                ),
+                                Icon(item.icon, color: accent, size: 21),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
@@ -448,13 +537,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         "Your transactions will be preserved and "
                         "reassigned to the selected category.",
                         style: TextStyle(
                           fontSize: 12,
                           height: 1.4,
-                          color: _categoryMuted,
+                          color: mutedColor,
                         ),
                       ),
                     ],
@@ -463,10 +552,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(dialogContext, false),
-                    child: const Text(
-                      "Cancel",
-                      style: TextStyle(color: _categoryMuted),
-                    ),
+                    child: Text("Cancel", style: TextStyle(color: mutedColor)),
                   ),
                   ElevatedButton(
                     onPressed: selectedReplacement == null
@@ -475,8 +561,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _categoryRed,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFFE5E3EB),
-                      disabledForegroundColor: _categoryMuted,
+                      disabledBackgroundColor: dark
+                          ? const Color(0xFF393246)
+                          : const Color(0xFFE5E3EB),
+                      disabledForegroundColor: mutedColor,
                       elevation: 0,
                     ),
                     child: const Text("Delete Category"),
@@ -517,6 +605,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   Widget _typeSelector({required String type, required IconData icon}) {
     final isSelected = selectedType == type;
+    final accent = _accent;
 
     return Expanded(
       child: GestureDetector(
@@ -533,24 +622,20 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 13),
           decoration: BoxDecoration(
-            color: isSelected ? _categoryPurple : Colors.transparent,
+            color: isSelected ? accent : Colors.transparent,
             borderRadius: BorderRadius.circular(11),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: isSelected ? Colors.white : _categoryMuted,
-              ),
+              Icon(icon, size: 18, color: isSelected ? Colors.white : _muted),
               const SizedBox(width: 7),
               Flexible(
                 child: Text(
                   type,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : _categoryMuted,
+                    color: isSelected ? Colors.white : _muted,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
@@ -564,17 +649,14 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   }
 
   Widget _categoryCard(Category category) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: isDark ? Colors.white12 : _categoryBorder),
+        border: Border.all(color: _border),
       ),
-      // Material owns the card background and ListTile ink effects.
       child: Material(
-        color: Theme.of(context).cardColor,
+        color: _card,
         borderRadius: BorderRadius.circular(15),
         clipBehavior: Clip.antiAlias,
         child: ListTile(
@@ -586,15 +668,15 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             width: 45,
             height: 45,
             decoration: BoxDecoration(
-              color: _categoryPurple.withValues(alpha: 0.12),
+              color: _accent.withValues(alpha: 0.13),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(category.icon, color: _categoryPurple, size: 23),
+            child: Icon(category.icon, color: _accent, size: 23),
           ),
           title: Text(
             category.name,
-            style: const TextStyle(
-              color: _categoryText,
+            style: TextStyle(
+              color: _text,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -603,7 +685,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               "$selectedType category",
-              style: const TextStyle(color: _categoryMuted, fontSize: 11),
+              style: TextStyle(color: _muted, fontSize: 11),
             ),
           ),
           trailing: Row(
@@ -613,11 +695,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 tooltip: "Edit category",
                 visualDensity: VisualDensity.compact,
                 onPressed: () => showCategoryDialog(category: category),
-                icon: const Icon(
-                  Icons.edit_outlined,
-                  color: _categoryPurple,
-                  size: 21,
-                ),
+                icon: Icon(Icons.edit_outlined, color: _accent, size: 21),
               ),
               IconButton(
                 tooltip: "Delete category",
@@ -644,17 +722,17 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         children: [
           Text(
             "$selectedType Categories",
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
-              color: _categoryText,
+              color: _text,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             "${categories.length} "
             "${categories.length == 1 ? 'category' : 'categories'}",
-            style: const TextStyle(fontSize: 12, color: _categoryMuted),
+            style: TextStyle(fontSize: 12, color: _muted),
           ),
         ],
       ),
@@ -671,24 +749,20 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             width: 76,
             height: 76,
             decoration: BoxDecoration(
-              color: _categoryPurple.withValues(alpha: 0.10),
+              color: _accent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: const Icon(
-              Icons.category_outlined,
-              size: 38,
-              color: _categoryPurple,
-            ),
+            child: Icon(Icons.category_outlined, size: 38, color: _accent),
           ),
         ),
         const SizedBox(height: 18),
-        const Text(
+        Text(
           "No categories yet",
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: _categoryText,
+            color: _text,
           ),
         ),
         const SizedBox(height: 8),
@@ -696,11 +770,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           "Add your first $selectedType category "
           "to keep your records organized.",
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 13,
-            height: 1.5,
-            color: _categoryMuted,
-          ),
+          style: TextStyle(fontSize: 13, height: 1.5, color: _muted),
         ),
       ],
     );
@@ -708,28 +778,22 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark
-          ? Theme.of(context).scaffoldBackgroundColor
-          : _categoryBackground,
+      backgroundColor: _background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Manage Categories",
-          style: TextStyle(fontWeight: FontWeight.w800),
+          style: TextStyle(color: _text, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
-        backgroundColor: isDark
-            ? Theme.of(context).scaffoldBackgroundColor
-            : _categoryBackground,
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: _background,
+        foregroundColor: _text,
         elevation: 0,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showCategoryDialog(),
-        backgroundColor: _categoryPurple,
-        foregroundColor: Colors.white,
+        backgroundColor: _accent,
+        foregroundColor: _isDark ? _categoryDarkBackground : Colors.white,
         elevation: 3,
         icon: const Icon(Icons.add_rounded),
         label: const Text(
@@ -744,11 +808,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             child: Container(
               padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
+                color: _card,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: isDark ? Colors.white12 : _categoryBorder,
-                ),
+                border: Border.all(color: _border),
               ),
               child: Row(
                 children: [
@@ -763,17 +825,15 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: _categoryPurple,
+              color: _accent,
               onRefresh: loadCategories,
               child: isLoading
                   ? ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(height: 180),
+                      children: [
+                        const SizedBox(height: 180),
                         Center(
-                          child: CircularProgressIndicator(
-                            color: _categoryPurple,
-                          ),
+                          child: CircularProgressIndicator(color: _accent),
                         ),
                       ],
                     )
@@ -795,8 +855,6 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   }
 }
 
-// The editor owns its controller. It is disposed only when the editor
-// itself is removed from the widget tree.
 class _CategoryDialogResult {
   final String name;
   final IconData icon;
@@ -806,10 +864,12 @@ class _CategoryDialogResult {
 
 class _CategoryEditorDialog extends StatefulWidget {
   final Category? category;
+  final bool isDark;
   final Future<IconData?> Function() showIconPicker;
 
   const _CategoryEditorDialog({
     required this.category,
+    required this.isDark,
     required this.showIconPicker,
   });
 
@@ -822,6 +882,20 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
   final _formKey = GlobalKey<FormState>();
 
   late IconData _selectedIcon;
+
+  bool get _isDark => widget.isDark;
+
+  Color get _card => _isDark ? _categoryDarkCard : Colors.white;
+
+  Color get _text => _isDark ? _categoryDarkText : _categoryText;
+
+  Color get _muted => _isDark ? _categoryDarkMuted : _categoryMuted;
+
+  Color get _accent => _isDark ? _categoryDarkPurple : _categoryPurple;
+
+  Color get _field => _isDark ? const Color(0xFF2A2538) : _categoryBackground;
+
+  Color get _border => _isDark ? _categoryDarkBorder : _categoryBorder;
 
   @override
   void initState() {
@@ -862,12 +936,12 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Theme.of(context).cardColor,
+      backgroundColor: _card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       title: Text(
         widget.category == null ? "Add Category" : "Edit Category",
-        style: const TextStyle(
-          color: _categoryText,
+        style: TextStyle(
+          color: _text,
           fontSize: 19,
           fontWeight: FontWeight.w800,
         ),
@@ -879,13 +953,13 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "CATEGORY NAME",
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
-                  color: _categoryMuted,
+                  color: _muted,
                 ),
               ),
               const SizedBox(height: 8),
@@ -894,29 +968,25 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                 autofocus: true,
                 maxLength: 30,
                 textCapitalization: TextCapitalization.words,
+                style: TextStyle(color: _text),
                 decoration: InputDecoration(
                   hintText: "Enter category name",
+                  hintStyle: TextStyle(color: _muted),
                   counterText: "",
                   filled: true,
-                  fillColor: _categoryBackground,
-                  prefixIcon: const Icon(
-                    Icons.label_outline_rounded,
-                    color: _categoryPurple,
-                  ),
+                  fillColor: _field,
+                  prefixIcon: Icon(Icons.label_outline_rounded, color: _accent),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _categoryBorder),
+                    borderSide: BorderSide(color: _border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _categoryBorder),
+                    borderSide: BorderSide(color: _border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: _categoryPurple,
-                      width: 1.5,
-                    ),
+                    borderSide: BorderSide(color: _accent, width: 1.5),
                   ),
                 ),
                 validator: (value) {
@@ -934,13 +1004,13 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                 },
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 "CATEGORY ICON",
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
-                  color: _categoryMuted,
+                  color: _muted,
                 ),
               ),
               const SizedBox(height: 10),
@@ -948,11 +1018,9 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _categoryPurple.withValues(alpha: 0.08),
+                  color: _softPurple,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: _categoryPurple.withValues(alpha: 0.18),
-                  ),
+                  border: Border.all(color: _accent.withValues(alpha: 0.22)),
                 ),
                 child: Column(
                   children: [
@@ -960,15 +1028,19 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                       width: 58,
                       height: 58,
                       decoration: BoxDecoration(
-                        color: _categoryPurple,
+                        color: _accent,
                         borderRadius: BorderRadius.circular(17),
                       ),
-                      child: Icon(_selectedIcon, size: 30, color: Colors.white),
+                      child: Icon(
+                        _selectedIcon,
+                        size: 30,
+                        color: _isDark ? _categoryDarkBackground : Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       "Selected icon",
-                      style: TextStyle(color: _categoryMuted, fontSize: 12),
+                      style: TextStyle(color: _muted, fontSize: 12),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -978,8 +1050,8 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                         icon: const Icon(Icons.grid_view_rounded, size: 18),
                         label: const Text("Choose Icon"),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: _categoryPurple,
-                          side: const BorderSide(color: _categoryPurple),
+                          foregroundColor: _accent,
+                          side: BorderSide(color: _accent),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(11),
                           ),
@@ -997,13 +1069,13 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text("Cancel", style: TextStyle(color: _categoryMuted)),
+          child: Text("Cancel", style: TextStyle(color: _muted)),
         ),
         ElevatedButton(
           onPressed: _save,
           style: ElevatedButton.styleFrom(
-            backgroundColor: _categoryPurple,
-            foregroundColor: Colors.white,
+            backgroundColor: _accent,
+            foregroundColor: _isDark ? _categoryDarkBackground : Colors.white,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             shape: RoundedRectangleBorder(
@@ -1018,4 +1090,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
       ],
     );
   }
+
+  Color get _softPurple =>
+      _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
 }

@@ -14,9 +14,36 @@ class TransactionsPage extends StatefulWidget {
 
 class _TransactionsPageState extends State<TransactionsPage> {
   static const Color _primary = Color(0xFF5B45B5);
-  static const Color _background = Color(0xFFF7F7FB);
-  static const Color _border = Color(0xFFECEAF3);
-  static const Color _muted = Color(0xFF85839A);
+  static const Color _darkPrimary = Color(0xFFB9A8FF);
+  static const Color _green = Color(0xFF159A75);
+  static const Color _red = Color(0xFFE05252);
+
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _background =>
+      _isDark ? const Color(0xFF15131E) : const Color(0xFFF7F7FB);
+
+  Color get _card => _isDark ? const Color(0xFF211D2D) : Colors.white;
+
+  Color get _border =>
+      _isDark ? const Color(0xFF393246) : const Color(0xFFE7E4F0);
+
+  Color get _text =>
+      _isDark ? const Color(0xFFF5F2FF) : const Color(0xFF29263A);
+
+  Color get _muted =>
+      _isDark ? const Color(0xFFB7B2C8) : const Color(0xFF6F6B82);
+
+  Color get _subtle =>
+      _isDark ? const Color(0xFF928BA8) : const Color(0xFF8B8798);
+
+  Color get _surface =>
+      _isDark ? const Color(0xFF2A2538) : const Color(0xFFFAFAFD);
+
+  Color get _softPurple =>
+      _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
+
+  Color get _accent => _isDark ? _darkPrimary : _primary;
 
   List<Map<String, dynamic>> transactions = [];
   DateTime selectedMonth = DateTime.now();
@@ -40,6 +67,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
         isLoading = false;
       });
     } catch (e) {
+      debugPrint('Unable to load transactions: $e');
+
       if (!mounted) return;
 
       setState(() {
@@ -65,18 +94,27 @@ class _TransactionsPageState extends State<TransactionsPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              backgroundColor: _card,
+              surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: _border),
               ),
-              title: const Text(
+              title: Text(
                 'Select Month',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: _text,
+                ),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<int>(
                     value: selectedYear,
+                    dropdownColor: _card,
+                    style: TextStyle(color: _text),
                     decoration: _dropdownDecoration('Year'),
                     items: List.generate(currentYear - 1999, (index) {
                       final year = currentYear - index;
@@ -97,6 +135,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
                     value: selectedMonthNumber,
+                    dropdownColor: _card,
+                    style: TextStyle(color: _text),
                     decoration: _dropdownDecoration('Month'),
                     items: List.generate(12, (index) {
                       final month = index + 1;
@@ -122,11 +162,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel', style: TextStyle(color: _muted)),
+                  child: Text('Cancel', style: TextStyle(color: _muted)),
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: _primary,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -156,20 +197,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
   InputDecoration _dropdownDecoration(String label) {
     return InputDecoration(
       labelText: label,
+      labelStyle: TextStyle(color: _muted),
       filled: true,
-      fillColor: _background,
+      fillColor: _surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _border),
+        borderSide: BorderSide(color: _border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _border),
+        borderSide: BorderSide(color: _border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _primary, width: 1.5),
+        borderSide: BorderSide(color: _accent, width: 1.5),
       ),
     );
   }
@@ -199,7 +241,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
           date.month == selectedMonth.month;
     }).toList();
 
-    // Sort newest transactions first.
     filteredTransactions.sort((a, b) {
       final dateA = DateTime.tryParse(a['createdAt']?.toString() ?? '');
       final dateB = DateTime.tryParse(b['createdAt']?.toString() ?? '');
@@ -210,6 +251,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
     for (final transaction in filteredTransactions) {
       final date = DateTime.parse(transaction['createdAt'].toString());
+
       final transactionDay = DateTime(date.year, date.month, date.day);
 
       String title;
@@ -270,38 +312,40 @@ class _TransactionsPageState extends State<TransactionsPage> {
     );
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: _background,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: _background,
+        foregroundColor: _text,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          color: _primary,
+          color: _accent,
           tooltip: 'Back',
           onPressed: () {
             Navigator.pop(context, hasChanged);
           },
         ),
-        title: const Text(
+        title: Text(
           'Transactions',
           style: TextStyle(
             fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF29263D),
+            fontWeight: FontWeight.w800,
+            color: _text,
           ),
         ),
         centerTitle: false,
       ),
       body: RefreshIndicator(
-        color: _primary,
+        color: _accent,
+        backgroundColor: _card,
         onRefresh: loadTransactions,
         child: isLoading
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 220),
-                  Center(child: CircularProgressIndicator(color: _primary)),
+                children: [
+                  const SizedBox(height: 220),
+                  Center(child: CircularProgressIndicator(color: _accent)),
                 ],
               )
             : ListView(
@@ -309,42 +353,44 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                 children: [
                   // Month selector
-                  InkWell(
-                    onTap: selectMonthYear,
+                  Material(
+                    color: _card,
                     borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.calendar_month_rounded,
-                            color: _primary,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            getCurrentMonthTitle(),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF29263D),
+                    child: InkWell(
+                      onTap: selectMonthYear,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _border),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_month_rounded,
+                              color: _accent,
+                              size: 20,
                             ),
-                          ),
-                          const Spacer(),
-                          const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: _muted,
-                          ),
-                        ],
+                            const SizedBox(width: 10),
+                            Text(
+                              getCurrentMonthTitle(),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: _text,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: _muted,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -355,19 +401,19 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: _card,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: _border),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Monthly Overview',
                           style: TextStyle(
                             fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF29263D),
+                            fontWeight: FontWeight.w800,
+                            color: _text,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -378,7 +424,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 icon: Icons.arrow_downward_rounded,
                                 label: 'Expenses',
                                 amount: currencyFormat.format(totalExpenses),
-                                color: const Color(0xFFE05252),
+                                color: _red,
+                                isDark: _isDark,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -387,7 +434,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 icon: Icons.arrow_upward_rounded,
                                 label: 'Income',
                                 amount: currencyFormat.format(totalIncome),
-                                color: const Color(0xFF159A75),
+                                color: _green,
+                                isDark: _isDark,
                               ),
                             ),
                           ],
@@ -398,28 +446,29 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
                   const SizedBox(height: 24),
 
-                  // Transaction list heading
+                  // Transaction history heading
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Transaction History',
                           style: TextStyle(
                             fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF29263D),
+                            fontWeight: FontWeight.w800,
+                            color: _text,
                           ),
                         ),
                       ),
                       Text(
-                        '${monthTransactions.length} ${monthTransactions.length == 1 ? 'transaction' : 'transactions'}',
-                        style: const TextStyle(fontSize: 12, color: _muted),
+                        '${monthTransactions.length} '
+                        '${monthTransactions.length == 1 ? 'transaction' : 'transactions'}',
+                        style: TextStyle(fontSize: 12, color: _muted),
                       ),
                     ],
                   ),
 
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Your activity, organized by date',
                     style: TextStyle(fontSize: 12, color: _muted),
                   ),
@@ -427,49 +476,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   const SizedBox(height: 14),
 
                   if (groupedTransactions.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 36,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 58,
-                            height: 58,
-                            decoration: BoxDecoration(
-                              color: _primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: const Icon(
-                              Icons.receipt_long_rounded,
-                              size: 28,
-                              color: _primary,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'No transactions found',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF29263D),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'There are no transactions for ${getCurrentMonthTitle()}.',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 13, color: _muted),
-                          ),
-                        ],
-                      ),
-                    )
+                    _buildEmptyState()
                   else
                     ...groupedTransactions.entries.map((entry) {
                       return Padding(
@@ -484,9 +491,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                               ),
                               child: Text(
                                 entry.key,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w800,
                                   color: _muted,
                                 ),
                               ),
@@ -559,6 +566,46 @@ class _TransactionsPageState extends State<TransactionsPage> {
       ),
     );
   }
+
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: _softPurple,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Icon(Icons.receipt_long_rounded, size: 28, color: _accent),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No transactions found',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: _text,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'There are no transactions for '
+            '${getCurrentMonthTitle()}.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, height: 1.5, color: _muted),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SummaryItem extends StatelessWidget {
@@ -566,21 +613,28 @@ class _SummaryItem extends StatelessWidget {
   final String label;
   final String amount;
   final Color color;
+  final bool isDark;
 
   const _SummaryItem({
     required this.icon,
     required this.label,
     required this.amount,
     required this.color,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
+    final background = isDark
+        ? const Color(0xFF2A2538)
+        : color.withValues(alpha: 0.06);
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
+        color: background,
         borderRadius: BorderRadius.circular(13),
+        border: isDark ? Border.all(color: const Color(0xFF393246)) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,7 +648,7 @@ class _SummaryItem extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     color: color,
                   ),
                 ),
@@ -609,8 +663,8 @@ class _SummaryItem extends StatelessWidget {
               amount,
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: color,
+                fontWeight: FontWeight.w800,
+                color: isDark ? const Color(0xFFF5F2FF) : color,
               ),
             ),
           ),

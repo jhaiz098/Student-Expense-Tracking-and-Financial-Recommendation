@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
 const Color _aboutPurple = Color(0xFF5B45B5);
+const Color _aboutDarkPurple = Color(0xFFB9A8FF);
 const Color _aboutBackground = Color(0xFFF7F7FB);
+const Color _aboutDarkBackground = Color(0xFF15131E);
+const Color _aboutDarkCard = Color(0xFF211D2D);
 const Color _aboutBorder = Color(0xFFE7E4F0);
+const Color _aboutDarkBorder = Color(0xFF393246);
 const Color _aboutText = Color(0xFF29263A);
+const Color _aboutDarkText = Color(0xFFF5F2FF);
 const Color _aboutMuted = Color(0xFF6F6B82);
+const Color _aboutDarkMuted = Color(0xFFB7B2C8);
 const Color _aboutGreen = Color(0xFF159A75);
 const Color _aboutOrange = Color(0xFFE07816);
 const Color _aboutBlue = Color(0xFF2374D8);
@@ -12,7 +18,7 @@ const Color _aboutBlue = Color(0xFF2374D8);
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(String title, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -21,15 +27,15 @@ class AboutPage extends StatelessWidget {
             width: 4,
             height: 19,
             decoration: BoxDecoration(
-              color: _aboutPurple,
+              color: isDark ? _aboutDarkPurple : _aboutPurple,
               borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(width: 9),
           Text(
             title,
-            style: const TextStyle(
-              color: _aboutText,
+            style: TextStyle(
+              color: isDark ? _aboutDarkText : _aboutText,
               fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
@@ -44,6 +50,7 @@ class AboutPage extends StatelessWidget {
     required String title,
     required String description,
     required Color color,
+    required bool isDark,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -54,7 +61,7 @@ class AboutPage extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.13),
+              color: color.withValues(alpha: isDark ? 0.18 : 0.13),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 22),
@@ -66,8 +73,8 @@ class AboutPage extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: _aboutText,
+                  style: TextStyle(
+                    color: isDark ? _aboutDarkText : _aboutText,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -75,8 +82,8 @@ class AboutPage extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(
-                    color: _aboutMuted,
+                  style: TextStyle(
+                    color: isDark ? _aboutDarkMuted : _aboutMuted,
                     fontSize: 12,
                     height: 1.4,
                   ),
@@ -93,20 +100,23 @@ class AboutPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final background = isDark ? _aboutDarkBackground : _aboutBackground;
+    final cardColor = isDark ? _aboutDarkCard : Theme.of(context).cardColor;
+    final borderColor = isDark ? _aboutDarkBorder : _aboutBorder;
+    final textColor = isDark ? _aboutDarkText : _aboutText;
+    final mutedColor = isDark ? _aboutDarkMuted : _aboutMuted;
+    final accentColor = isDark ? _aboutDarkPurple : _aboutPurple;
+
     return Scaffold(
-      backgroundColor: isDark
-          ? Theme.of(context).scaffoldBackgroundColor
-          : _aboutBackground,
+      backgroundColor: background,
       appBar: AppBar(
-        title: const Text(
-          "About",
-          style: TextStyle(fontWeight: FontWeight.w800),
+        title: Text(
+          'About',
+          style: TextStyle(color: textColor, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
-        backgroundColor: isDark
-            ? Theme.of(context).scaffoldBackgroundColor
-            : _aboutBackground,
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: background,
+        foregroundColor: textColor,
         elevation: 0,
       ),
       body: ListView(
@@ -117,9 +127,9 @@ class AboutPage extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: cardColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isDark ? Colors.white12 : _aboutBorder),
+              border: Border.all(color: borderColor),
             ),
             child: Column(
               children: [
@@ -131,7 +141,8 @@ class AboutPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: _aboutPurple.withValues(alpha: 0.22),
+                        color: (isDark ? _aboutDarkPurple : _aboutPurple)
+                            .withValues(alpha: 0.20),
                         blurRadius: 18,
                         offset: const Offset(0, 7),
                       ),
@@ -144,21 +155,21 @@ class AboutPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  "Student Expense AI",
+                Text(
+                  'Student Expense AI',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _aboutText,
+                    color: textColor,
                     fontSize: 23,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  "Student Expense Recommendation System",
+                Text(
+                  'Student Expense Recommendation System',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _aboutMuted,
+                    color: mutedColor,
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -170,13 +181,13 @@ class AboutPage extends StatelessWidget {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: _aboutPurple.withValues(alpha: 0.12),
+                    color: accentColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    "VERSION 1.0.0",
+                  child: Text(
+                    'VERSION 1.0.0',
                     style: TextStyle(
-                      color: _aboutPurple,
+                      color: accentColor,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.7,
@@ -190,64 +201,68 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 26),
 
           // About the app
-          _sectionTitle("About the App"),
+          _sectionTitle('About the App', isDark),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDark ? Colors.white12 : _aboutBorder),
+              border: Border.all(color: borderColor),
             ),
-            child: const Text(
-              "Student Expense AI is a personal finance application "
-              "designed to help students track expenses, manage budgets, "
-              "and understand their spending habits. It helps students "
-              "make more informed decisions about how they use their money.",
-              style: TextStyle(color: _aboutMuted, fontSize: 13, height: 1.65),
+            child: Text(
+              'Student Expense AI is a personal finance application '
+              'designed to help students track expenses, manage budgets, '
+              'and understand their spending habits. It helps students '
+              'make more informed decisions about how they use their money.',
+              style: TextStyle(color: mutedColor, fontSize: 13, height: 1.65),
             ),
           ),
 
           const SizedBox(height: 26),
 
-          // Features
-          _sectionTitle("Key Features"),
+          // Key features
+          _sectionTitle('Key Features', isDark),
           Container(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDark ? Colors.white12 : _aboutBorder),
+              border: Border.all(color: borderColor),
             ),
             child: Column(
               children: [
                 _featureTile(
                   icon: Icons.receipt_long_rounded,
-                  title: "Expense Tracking",
+                  title: 'Expense Tracking',
                   description:
-                      "Record and review your daily expenses in one place.",
-                  color: _aboutPurple,
+                      'Record and review your daily expenses in one place.',
+                  color: isDark ? _aboutDarkPurple : _aboutPurple,
+                  isDark: isDark,
                 ),
                 _featureTile(
                   icon: Icons.account_balance_wallet_outlined,
-                  title: "Budget Monitoring",
+                  title: 'Budget Monitoring',
                   description:
-                      "Set budgets and monitor spending against your limits.",
+                      'Set budgets and monitor spending against your limits.',
                   color: _aboutGreen,
+                  isDark: isDark,
                 ),
                 _featureTile(
                   icon: Icons.bar_chart_rounded,
-                  title: "Spending Analytics",
+                  title: 'Spending Analytics',
                   description:
-                      "Understand your spending patterns through summaries.",
+                      'Understand your spending patterns through summaries.',
                   color: _aboutBlue,
+                  isDark: isDark,
                 ),
                 _featureTile(
                   icon: Icons.psychology_rounded,
-                  title: "AI Recommendations",
+                  title: 'AI Recommendations',
                   description:
-                      "Get personalized suggestions based on your spending data.",
+                      'Get personalized suggestions based on your spending data.',
                   color: _aboutOrange,
+                  isDark: isDark,
                 ),
               ],
             ),
@@ -263,23 +278,23 @@ class AboutPage extends StatelessWidget {
                   width: 36,
                   height: 3,
                   decoration: BoxDecoration(
-                    color: _aboutBorder,
+                    color: borderColor,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text(
-                  "Student Expense AI",
+                Text(
+                  'Student Expense AI',
                   style: TextStyle(
-                    color: _aboutText,
+                    color: textColor,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 5),
-                const Text(
-                  "© 2026 Student Expense AI",
-                  style: TextStyle(color: _aboutMuted, fontSize: 11),
+                Text(
+                  '© 2026 Student Expense AI',
+                  style: TextStyle(color: mutedColor, fontSize: 11),
                 ),
               ],
             ),
