@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> {
   double monthlyBudget = 0;
   double monthlyExpenses = 0;
   String currentMonth = DateFormat('MMMM').format(DateTime.now());
-  String fullName = '';
+  String firstName = '';
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
@@ -87,7 +87,7 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
 
     setState(() {
-      fullName = profile?['fullName'] ?? '';
+      firstName = profile?['firstName'] ?? '';
     });
   }
 
@@ -199,7 +199,7 @@ class _HomePageState extends State<HomePage> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
           children: [
             Text(
-              'Hello, ${fullName.isNotEmpty ? fullName : 'there'}!',
+              'Hello, ${firstName.isNotEmpty ? firstName : 'there'}!',
               style: TextStyle(
                 fontSize: 27,
                 fontWeight: FontWeight.w900,
@@ -227,6 +227,7 @@ class _HomePageState extends State<HomePage> {
               tooltipBorderRadius: BorderRadius.circular(16),
               tooltipPadding: const EdgeInsets.all(16),
               textColor: Colors.white,
+              disableBarrierInteraction: true,
               titleTextStyle: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

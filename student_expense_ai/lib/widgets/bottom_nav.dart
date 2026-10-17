@@ -143,7 +143,25 @@ class BottomNav extends StatelessWidget {
                     // Reserve the middle position for the add button.
                     if (index == 2) return;
 
-                    onTap(index > 2 ? index - 1 : index);
+                    final pageIndex = index > 2 ? index - 1 : index;
+
+                    // Handle tutorial navigation explicitly.
+                    if (pageIndex == 1) {
+                      onAnalyticsTutorialTap();
+                      return;
+                    }
+
+                    if (pageIndex == 2) {
+                      onAdvisorTutorialTap();
+                      return;
+                    }
+
+                    if (pageIndex == 3) {
+                      onSettingsTutorialTap();
+                      return;
+                    }
+
+                    onTap(pageIndex);
                   },
                   destinations: [
                     NavigationDestination(

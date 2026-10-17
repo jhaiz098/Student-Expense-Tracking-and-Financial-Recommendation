@@ -27,7 +27,9 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final _formKey = GlobalKey<FormState>();
 
-  final fullNameController = TextEditingController();
+  final firstNameController = TextEditingController();
+  final middleNameController = TextEditingController();
+  final lastNameController = TextEditingController();
   final addressController = TextEditingController();
   final schoolController = TextEditingController();
   final schoolAddressController = TextEditingController();
@@ -79,7 +81,10 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
 
       if (profile != null) {
-        fullNameController.text = profile['fullName'] ?? '';
+        firstNameController.text = profile['firstName'] ?? '';
+        middleNameController.text = profile['middleName'] ?? '';
+        lastNameController.text = profile['lastName'] ?? '';
+
         addressController.text = profile['address'] ?? '';
         selectedStatus = profile['currentStatus'];
 
@@ -100,7 +105,6 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
 
       setState(() => isLoading = false);
-
       _showMessage('Unable to load your profile. Please try again.');
     }
   }
@@ -165,7 +169,11 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => isSaving = true);
 
     final data = {
-      'fullName': fullNameController.text.trim(),
+      'firstName': firstNameController.text.trim(),
+      'middleName': middleNameController.text.trim().isEmpty
+          ? null
+          : middleNameController.text.trim(),
+      'lastName': lastNameController.text.trim(),
       'dateOfBirth': selectedDateOfBirth!.toIso8601String(),
       'address': addressController.text.trim(),
       'currentStatus': selectedStatus,
@@ -190,9 +198,14 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile saved successfully.'),
-          behavior: SnackBarBehavior.floating,
+        SnackBar(
+          backgroundColor: _isDark ? Colors.white : const Color(0xFF5B45B5),
+          content: Text(
+            'Profile saved successfully!',
+            style: TextStyle(
+              color: _isDark ? const Color(0xFF29263A) : Colors.white,
+            ),
+          ),
         ),
       );
 
@@ -215,13 +228,18 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: _isDark ? _profileDarkCard : null,
-      ),
-    );
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: TextStyle(color: _isDark ? _profileText : Colors.white),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: _isDark ? Colors.white : _profilePurple,
+        ),
+      );
   }
 
   Widget _sectionTitle(String title, {String? subtitle, IconData? icon}) {
@@ -274,17 +292,20 @@ class _ProfilePageState extends State<ProfilePage> {
     required String label,
     required IconData icon,
     String? hint,
+    bool requiredField = true,
   }) {
     return TextFormField(
       controller: controller,
       textCapitalization: TextCapitalization.words,
       style: TextStyle(color: _text, fontSize: 14),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Please enter ${label.toLowerCase()}';
-        }
-        return null;
-      },
+      validator: requiredField
+          ? (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter ${label.toLowerCase()}';
+              }
+              return null;
+            }
+          : null,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: _muted),
@@ -442,8 +463,21 @@ class _ProfilePageState extends State<ProfilePage> {
                       icon: Icons.person_outline_rounded,
                     ),
                     _textField(
-                      controller: fullNameController,
-                      label: 'Full Name',
+                      controller: firstNameController,
+                      label: 'First Name',
+                      icon: Icons.badge_outlined,
+                    ),
+                    const SizedBox(height: 15),
+                    _textField(
+                      controller: middleNameController,
+                      label: 'Middle Name (Optional)',
+                      icon: Icons.person_outline_rounded,
+                      requiredField: false,
+                    ),
+                    const SizedBox(height: 15),
+                    _textField(
+                      controller: lastNameController,
+                      label: 'Last Name',
                       icon: Icons.badge_outlined,
                     ),
                     const SizedBox(height: 15),
@@ -504,7 +538,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
 
                     const SizedBox(height: 28),
-
                     SizedBox(
                       height: 54,
                       child: ElevatedButton(
@@ -585,7 +618,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
-    fullNameController.dispose();
+    firstNameController.dispose();
+    middleNameController.dispose();
+    lastNameController.dispose();
     addressController.dispose();
     schoolController.dispose();
     schoolAddressController.dispose();

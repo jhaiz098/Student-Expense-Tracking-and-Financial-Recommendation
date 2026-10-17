@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:showcaseview/showcaseview.dart';
-
+import 'dart:async';
 import 'home_page.dart';
 import 'analytics_page.dart';
 import 'advisor_page.dart';
@@ -57,23 +57,38 @@ class _MainPageState extends State<MainPage> {
 
   bool advisorTutorialFinished = false;
 
+  bool isHandlingTutorialTap = false;
+
   @override
   void initState() {
     super.initState();
 
     ShowcaseView.register(
       autoPlay: false,
-
       disableMovingAnimation: true,
-
       disableScaleAnimation: true,
+      disableBarrierInteraction: true,
 
       onComplete: (index, key) {
         handleTutorialComplete(index, key);
       },
 
       onFinish: () {
-        debugPrint("Tutorial finished");
+        if (!mounted) return;
+
+        // Only unlock navigation after reaching the final tutorial section.
+        if (currentIndex == 3 &&
+            homeTutorialFinished &&
+            analyticsTutorialFinished &&
+            advisorTutorialFinished) {
+          setState(() {
+            tutorialActive = false;
+          });
+
+          debugPrint("All tutorials finished. Navigation unlocked.");
+        } else {
+          debugPrint("Current showcase sequence finished.");
+        }
       },
 
       onDismiss: (key) {
@@ -88,6 +103,26 @@ class _MainPageState extends State<MainPage> {
         startHomeTutorial();
       });
     }
+  }
+
+  void exitTutorial() {
+    if (!mounted) return;
+
+    ShowcaseView.get().dismiss();
+
+    setState(() {
+      tutorialActive = false;
+    });
+  }
+
+  void recoverTutorial() {
+    if (!mounted || !tutorialActive) return;
+
+    setState(() {
+      tutorialActive = false;
+    });
+
+    ShowcaseView.get().dismiss();
   }
 
   // ============================================================
@@ -210,9 +245,7 @@ class _MainPageState extends State<MainPage> {
 
     if (key == addTransactionKey) {
       homeTutorialFinished = true;
-
       startAnalyticsNavigationTutorial();
-
       return;
     }
 
@@ -245,10 +278,11 @@ class _MainPageState extends State<MainPage> {
     // ----------------------------------------------------------
 
     if (key == settingsKey) {
-      tutorialActive = false;
+      setState(() {
+        tutorialActive = false;
+      });
 
       debugPrint("All tutorials completed");
-
       return;
     }
   }
@@ -257,72 +291,115 @@ class _MainPageState extends State<MainPage> {
   // ANALYTICS TUTORIAL TAP
   // ============================================================
 
-  void handleAnalyticsTutorialTap() {
-    if (!tutorialActive || !homeTutorialFinished) {
+  Future<void> handleAnalyticsTutorialTap() async {
+    if (!mounted) return;
+
+    // After the tutorial, allow normal navigation.
+    if (!tutorialActive) {
+      setState(() {
+        currentIndex = 1;
+      });
       return;
     }
 
-    ShowcaseView.get().dismiss();
+    if (!homeTutorialFinished || isHandlingTutorialTap) return;
 
-    if (!mounted) return;
+    isHandlingTutorialTap = true;
 
-    setState(() {
-      currentIndex = 1;
-      refreshKey++;
-    });
+    try {
+      ShowcaseView.get().dismiss();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      setState(() {
+        currentIndex = 1;
+        refreshKey++;
+      });
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
       if (!mounted || !tutorialActive) return;
+
       startAnalyticsTutorial();
-    });
+    } finally {
+      isHandlingTutorialTap = false;
+    }
   }
 
   // ============================================================
   // ADVISOR TUTORIAL TAP
   // ============================================================
 
-  void handleAdvisorTutorialTap() {
-    if (!tutorialActive || !analyticsTutorialFinished) {
+  Future<void> handleAdvisorTutorialTap() async {
+    if (!mounted) return;
+
+    if (!tutorialActive) {
+      setState(() {
+        currentIndex = 2;
+      });
       return;
     }
 
-    ShowcaseView.get().dismiss();
+    if (!analyticsTutorialFinished || isHandlingTutorialTap) return;
 
-    if (!mounted) return;
+    isHandlingTutorialTap = true;
 
-    setState(() {
-      currentIndex = 2;
-      refreshKey++;
-    });
+    try {
+      ShowcaseView.get().dismiss();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      setState(() {
+        currentIndex = 2;
+        refreshKey++;
+      });
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
       if (!mounted || !tutorialActive) return;
+
       startAdvisorTutorial();
-    });
+    } finally {
+      isHandlingTutorialTap = false;
+    }
   }
 
   // ============================================================
   // SETTINGS TUTORIAL TAP
   // ============================================================
 
-  void handleSettingsTutorialTap() {
-    if (!tutorialActive || !advisorTutorialFinished) {
+  Future<void> handleSettingsTutorialTap() async {
+    if (!mounted) return;
+
+    if (!tutorialActive) {
+      setState(() {
+        currentIndex = 3;
+      });
       return;
     }
 
-    ShowcaseView.get().dismiss();
+    if (!advisorTutorialFinished || isHandlingTutorialTap) return;
 
-    if (!mounted) return;
+    isHandlingTutorialTap = true;
 
-    setState(() {
-      currentIndex = 3;
-      refreshKey++;
-    });
+    try {
+      ShowcaseView.get().dismiss();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      setState(() {
+        currentIndex = 3;
+        refreshKey++;
+      });
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
       if (!mounted || !tutorialActive) return;
+
       startSettingsTutorial();
-    });
+    } finally {
+      isHandlingTutorialTap = false;
+    }
   }
 
   // ============================================================
@@ -330,8 +407,6 @@ class _MainPageState extends State<MainPage> {
   // ============================================================
 
   void handleNavigation(int index) {
-    // During tutorial, navigation is controlled by the
-    // highlighted tutorial targets.
     if (tutorialActive) {
       return;
     }

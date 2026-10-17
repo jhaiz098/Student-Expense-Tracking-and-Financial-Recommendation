@@ -85,7 +85,9 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE user_profile (
         id INTEGER PRIMARY KEY,
-        fullName TEXT NOT NULL,
+        firstName TEXT NOT NULL,
+        middleName TEXT,
+        lastName TEXT NOT NULL,
         dateOfBirth TEXT NOT NULL,
         address TEXT NOT NULL,
         currentStatus TEXT NOT NULL,
