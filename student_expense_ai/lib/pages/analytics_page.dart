@@ -67,6 +67,15 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   String selectedPeriod = 'This Month';
   bool isLoading = true;
 
+  final List<String> _trendOptions = const [
+    'Daily',
+    'Weekly',
+    'Monthly',
+    'Yearly',
+  ];
+
+  String selectedTrend = 'Monthly';
+
   List<Map<String, dynamic>> expenses = [];
   List<Map<String, dynamic>> budgets = [];
 
@@ -171,6 +180,27 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }
 
   DateTime get _periodEndExclusive => _nextMonthStart;
+
+  Widget _comparisonRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(label, style: TextStyle(color: _muted, fontSize: 12)),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          value,
+          textAlign: TextAlign.end,
+          style: TextStyle(
+            color: valueColor ?? _text,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
 
   // Returns the start of the previous comparison period.
   DateTime? get _previousPeriodStart {
@@ -389,32 +419,113 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     }).length;
   }
 
-  List<Map<String, dynamic>> get _monthlyTrend {
+  List<Map<String, dynamic>> get _spendingTrend {
     final now = DateTime.now();
     final rows = <Map<String, dynamic>>[];
 
-    for (int offset = 5; offset >= 0; offset--) {
-      final month = DateTime(now.year, now.month - offset, 1);
-      final nextMonth = DateTime(month.year, month.month + 1, 1);
+    late DateTime start;
+    late int count;
 
-      var total = 0.0;
+    switch (selectedTrend) {
+      case 'Daily':
+        // Today and the previous 6 days.
+        start = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(days: 6));
+        count = 7;
 
-      for (final item in expenses) {
-        final date = _date(item);
+        for (int i = 0; i < count; i++) {
+          final periodStart = start.add(Duration(days: i));
+          final periodEnd = periodStart.add(const Duration(days: 1));
 
-        if (date != null && !date.isBefore(month) && date.isBefore(nextMonth)) {
-          total += _amount(item);
+          rows.add({
+            'label': DateFormat('E').format(periodStart),
+            'start': periodStart,
+            'end': periodEnd,
+            'amount': _sumExpenses(periodStart, periodEnd),
+          });
         }
-      }
+        break;
 
-      rows.add({
-        'label': DateFormat('MMM').format(month),
-        'month': month,
-        'amount': total,
-      });
+      case 'Weekly':
+        // Current week and the previous 5 weeks.
+        final currentWeek = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: now.weekday - 1));
+
+        start = currentWeek.subtract(const Duration(days: 35));
+        count = 6;
+
+        for (int i = 0; i < count; i++) {
+          final periodStart = start.add(Duration(days: i * 7));
+          final periodEnd = periodStart.add(const Duration(days: 7));
+
+          rows.add({
+            'label': DateFormat('MMM d').format(periodStart),
+            'start': periodStart,
+            'end': periodEnd,
+            'amount': _sumExpenses(periodStart, periodEnd),
+          });
+        }
+        break;
+
+      case 'Yearly':
+        // Current year and the previous 4 years.
+        count = 5;
+        start = DateTime(now.year - 4, 1, 1);
+
+        for (int i = 0; i < count; i++) {
+          final periodStart = DateTime(start.year + i, 1, 1);
+          final periodEnd = DateTime(periodStart.year + 1, 1, 1);
+
+          rows.add({
+            'label': DateFormat('yyyy').format(periodStart),
+            'start': periodStart,
+            'end': periodEnd,
+            'amount': _sumExpenses(periodStart, periodEnd),
+          });
+        }
+        break;
+
+      default:
+        // Monthly: current month and the previous 11 months.
+        count = 12;
+        start = DateTime(now.year, now.month - 11, 1);
+
+        for (int i = 0; i < count; i++) {
+          final periodStart = DateTime(start.year, start.month + i, 1);
+          final periodEnd = DateTime(
+            periodStart.year,
+            periodStart.month + 1,
+            1,
+          );
+
+          rows.add({
+            'label': DateFormat('MMM yy').format(periodStart),
+            'start': periodStart,
+            'end': periodEnd,
+            'amount': _sumExpenses(periodStart, periodEnd),
+          });
+        }
     }
 
     return rows;
+  }
+
+  double _sumExpenses(DateTime start, DateTime end) {
+    return expenses.fold<double>(0, (sum, item) {
+      final date = _date(item);
+
+      if (date == null || date.isBefore(start) || !date.isBefore(end)) {
+        return sum;
+      }
+
+      return sum + _amount(item);
+    });
   }
 
   Color _categoryColor(int index) =>
@@ -482,8 +593,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   _categoryChartCard(),
                   const SizedBox(height: 22),
                   _sectionIntro(
-                    'Monthly Spending Trend',
-                    'Compare recorded expenses across the last six months.',
+                    'Spending Trend',
+                    'Compare your recorded expenses by day, week, month, or year.',
                   ),
                   const SizedBox(height: 10),
                   _monthlyTrendCard(),
@@ -703,7 +814,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       ? 'No budget amount is recorded for this period.'
                       : _totalSpent > _budgetTotal
                       ? 'You have exceeded your budget by ${_money.format(_totalSpent - _budgetTotal)}.'
-                      : '${budgetPercentage.toStringAsFixed(1)}% of recorded budget spent',
+                      : '${budgetPercentage.toStringAsFixed(0)}% of recorded budget spent',
                   style: TextStyle(
                     color: !hasBudget
                         ? _muted
@@ -768,70 +879,199 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               ),
             ],
           ),
+
           if (previous != null) ...[
             const SizedBox(height: 16),
             Divider(color: _border),
             const SizedBox(height: 10),
             _subsectionTitle(
-              'Compared with the previous period',
+              'Expenses compared to the previous period',
               Icons.compare_arrows_rounded,
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Current: $_currentPeriodLabel\n'
-              'Previous: ${_previousPeriodLabel ?? 'Previous period'}',
-              style: TextStyle(color: _muted, fontSize: 10, height: 1.5),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  difference == 0
-                      ? Icons.horizontal_rule_rounded
-                      : difference! > 0
-                      ? Icons.trending_up_rounded
-                      : Icons.trending_down_rounded,
-                  color: difference == null || difference == 0
-                      ? _accent
-                      : difference > 0
-                      ? _red
-                      : _green,
-                ),
-                const SizedBox(width: 8),
+                // LEFT: Previous period
                 Expanded(
-                  child: Text(
-                    previous == 0
-                        ? (_totalSpent == 0
-                              ? 'No spending was recorded in either period.'
-                              : 'You recorded spending this period, but none in the previous period.')
-                        : difference == 0
-                        ? 'Your spending is unchanged.'
-                        : 'You spent ${_money.format(difference!.abs())} '
-                              '${difference > 0 ? 'more' : 'less'} than before.',
-                    style: TextStyle(color: _text, fontSize: 12, height: 1.4),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _border.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Previous Period',
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _money.format(previous),
+                          style: TextStyle(
+                            color: _text,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _previousPeriodLabel ?? 'Previous period',
+                          style: TextStyle(color: _muted, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // RIGHT: Current period
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _accent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _accent.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current Period',
+                          style: TextStyle(
+                            color: _accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _money.format(_totalSpent),
+                          style: TextStyle(
+                            color: _text,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _currentPeriodLabel,
+                          style: TextStyle(color: _muted, fontSize: 10),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-            if (previous > 0) ...[
-              const SizedBox(height: 7),
-              Text(
-                '${percentage!.abs().toStringAsFixed(1)}% '
-                '${difference! > 0
-                    ? 'increase'
-                    : difference < 0
-                    ? 'decrease'
-                    : 'change'}'
-                ' · Previous: ${_money.format(previous)}',
-                style: TextStyle(
-                  color: difference! > 0 ? _red : _green,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                ),
-              ),
-            ],
+
+            const SizedBox(height: 12),
+
+            // Expense difference and direction
+            Builder(
+              builder: (context) {
+                final change = _totalSpent - previous;
+                final increased = change > 0;
+                final decreased = change < 0;
+                final percentChange = previous > 0
+                    ? (change / previous) * 100
+                    : null;
+
+                final changeColor = increased
+                    ? _red
+                    : decreased
+                    ? _green
+                    : _muted;
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: changeColor.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: changeColor.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            increased
+                                ? Icons.trending_up_rounded
+                                : decreased
+                                ? Icons.trending_down_rounded
+                                : Icons.horizontal_rule_rounded,
+                            color: changeColor,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              increased
+                                  ? 'Expense increased by'
+                                  : decreased
+                                  ? 'Expense decreased by'
+                                  : 'No change in expenses',
+                              style: TextStyle(
+                                color: _text,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _money.format(change.abs()),
+                        style: TextStyle(
+                          color: changeColor,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (percentChange != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          '${percentChange.abs().toStringAsFixed(1)}% '
+                          '${increased
+                              ? 'increase'
+                              : decreased
+                              ? 'decrease'
+                              : 'change'} compared with the previous period',
+                          style: TextStyle(
+                            color: changeColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ] else if (_totalSpent > 0) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          'No spending was recorded in the previous period.',
+                          style: TextStyle(color: _muted, fontSize: 11),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
           ],
+
           if (topCategory != null || highestDay != null) ...[
             const SizedBox(height: 16),
             Divider(color: _border),
@@ -1209,7 +1449,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }
 
   Widget _monthlyTrendCard() {
-    final data = _monthlyTrend;
+    final data = _spendingTrend;
     final maxValue = data.fold<double>(
       0,
       (maximum, item) => math.max(maximum, item['amount'] as double).toDouble(),
@@ -1219,17 +1459,40 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Spending by month',
-            style: TextStyle(
-              color: _text,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Spending by ${selectedTrend.toLowerCase()}',
+                  style: TextStyle(
+                    color: _text,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedTrend,
+                  isDense: true,
+                  dropdownColor: _card,
+                  borderRadius: BorderRadius.circular(12),
+                  style: TextStyle(color: _text, fontSize: 11),
+                  items: _trendOptions.map((option) {
+                    return DropdownMenuItem(value: option, child: Text(option));
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => selectedTrend = value);
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 5),
           Text(
-            'Your total recorded expenses over the last six months.',
+            'Compare your recorded expenses across different time periods.',
             style: TextStyle(color: _muted, fontSize: 11, height: 1.4),
           ),
           const SizedBox(height: 12),
@@ -1299,11 +1562,34 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     touchTooltipData: LineTouchTooltipData(
                       getTooltipItems: (spots) => spots.map((spot) {
                         final index = spot.x.toInt();
-                        final month = data[index]['month'] as DateTime;
+
+                        if (index < 0 || index >= data.length) {
+                          return null;
+                        }
+
+                        final start = data[index]['start'] as DateTime;
+                        final end = data[index]['end'] as DateTime;
+
+                        String periodLabel;
+
+                        if (selectedTrend == 'Weekly') {
+                          periodLabel =
+                              '${DateFormat('MMM d').format(start)} – '
+                              '${DateFormat('MMM d, yyyy').format(end.subtract(const Duration(days: 1)))}';
+                        } else if (selectedTrend == 'Monthly') {
+                          periodLabel = DateFormat('MMMM yyyy').format(start);
+                        } else if (selectedTrend == 'Yearly') {
+                          periodLabel = DateFormat('yyyy').format(start);
+                        } else if (selectedTrend == 'Daily') {
+                          periodLabel = DateFormat(
+                            'MMMM d, yyyy',
+                          ).format(start);
+                        } else {
+                          periodLabel = DateFormat('MMMM yyyy').format(start);
+                        }
 
                         return LineTooltipItem(
-                          '${DateFormat('MMMM yyyy').format(month)}\n'
-                          '${_money.format(spot.y)}',
+                          '$periodLabel\n${_money.format(spot.y)}',
                           const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
@@ -1462,6 +1748,38 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               (sum, item) => sum + _amount(item),
             );
 
+            final previousMonthDate = DateTime(
+              selectedYear,
+              selectedMonth - 1,
+              1,
+            );
+
+            final previousMonthEnd = DateTime(
+              previousMonthDate.year,
+              previousMonthDate.month + 1,
+              1,
+            );
+
+            final previousMonthExpenses = expenses.where((item) {
+              final date = _date(item);
+
+              if (date == null) return false;
+
+              return !date.isBefore(previousMonthDate) &&
+                  date.isBefore(previousMonthEnd);
+            }).toList();
+
+            final previousSpent = previousMonthExpenses.fold<double>(
+              0,
+              (sum, item) => sum + _amount(item),
+            );
+
+            final expenseDifference = spent - previousSpent;
+
+            final expensePercentage = previousSpent == 0
+                ? null
+                : (expenseDifference / previousSpent) * 100;
+
             final budgetTotal = monthBudgets.fold<double>(
               0,
               (sum, item) => sum + _amount(item),
@@ -1617,6 +1935,267 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                 _orange,
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 18),
+
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: _card,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: _border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+
+                              children: [
+                                Text(
+                                  'Expense Comparison',
+                                  style: TextStyle(
+                                    color: _text,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+
+                                // Current and previous month totals
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: _background,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(color: _border),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Previous month',
+                                              style: TextStyle(
+                                                color: _muted,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              _money.format(previousSpent),
+                                              style: TextStyle(
+                                                color: _text,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 10),
+
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: _background,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(color: _border),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Selected month',
+                                              style: TextStyle(
+                                                color: _muted,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              _money.format(spent),
+                                              style: TextStyle(
+                                                color: _text,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                // Clear spending change indicator
+                                Builder(
+                                  builder: (context) {
+                                    final bool increased =
+                                        expenseDifference > 0;
+                                    final bool decreased =
+                                        expenseDifference < 0;
+                                    final bool unchanged =
+                                        expenseDifference == 0;
+
+                                    final Color changeColor = increased
+                                        ? Colors.red
+                                        : decreased
+                                        ? Colors.green
+                                        : _muted;
+
+                                    final IconData changeIcon = increased
+                                        ? Icons.trending_up
+                                        : decreased
+                                        ? Icons.trending_down
+                                        : Icons.trending_flat;
+
+                                    final String changeLabel = increased
+                                        ? 'Spending increased'
+                                        : decreased
+                                        ? 'Spending decreased'
+                                        : 'No change in spending';
+
+                                    final String percentageText =
+                                        previousSpent == 0
+                                        ? (spent == 0 ? '0.0%' : 'N/A')
+                                        : '${expensePercentage! > 0 ? '+' : ''}'
+                                              '${expensePercentage.toStringAsFixed(1)}%';
+
+                                    return Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: changeColor.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: changeColor.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                changeIcon,
+                                                color: changeColor,
+                                                size: 22,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  changeLabel,
+                                                  style: TextStyle(
+                                                    color: changeColor,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Amount changed',
+                                                      style: TextStyle(
+                                                        color: _muted,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      '${increased
+                                                          ? '+'
+                                                          : decreased
+                                                          ? '-'
+                                                          : ''}'
+                                                      '${_money.format(expenseDifference.abs())}',
+                                                      style: TextStyle(
+                                                        color: changeColor,
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Container(
+                                                width: 1,
+                                                height: 38,
+                                                color: _border,
+                                              ),
+                                              const SizedBox(width: 14),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Percentage change',
+                                                      style: TextStyle(
+                                                        color: _muted,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      percentageText,
+                                                      style: TextStyle(
+                                                        color: changeColor,
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          if (previousSpent == 0 &&
+                                              spent > 0) ...[
+                                            const SizedBox(height: 10),
+                                            Text(
+                                              'No expenses were recorded in the previous month, '
+                                              'so the percentage change cannot be calculated.',
+                                              style: TextStyle(
+                                                color: _muted,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 18),
 
