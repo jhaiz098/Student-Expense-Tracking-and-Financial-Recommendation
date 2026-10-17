@@ -15,6 +15,9 @@ const Color _categoryMuted = Color(0xFF6F6B82);
 const Color _categoryDarkMuted = Color(0xFFB7B2C8);
 const Color _categoryRed = Color(0xFFE05252);
 
+const Color _categoryGreen = Color(0xFF159A75);
+const Color _categoryDarkGreen = Color(0xFF54D6A4);
+
 class ManageCategoriesPage extends StatefulWidget {
   const ManageCategoriesPage({super.key});
 
@@ -47,6 +50,14 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   Color get _softPurple =>
       _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
+
+  Color get _typeColor {
+    if (selectedType == "Expense") {
+      return _isDark ? const Color(0xFFFF777E) : _categoryRed;
+    }
+
+    return _isDark ? _categoryDarkGreen : _categoryGreen;
+  }
 
   @override
   void initState() {
@@ -106,6 +117,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       builder: (_) => _CategoryEditorDialog(
         category: category,
         isDark: _isDark,
+        type: selectedType,
         showIconPicker: showIconPicker,
       ),
     );
@@ -231,7 +243,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       context: context,
       builder: (pickerContext) {
         final dark = Theme.of(pickerContext).brightness == Brightness.dark;
-        final accent = dark ? _categoryDarkPurple : _categoryPurple;
+        final accent = selectedType == "Expense"
+            ? (dark ? const Color(0xFFFF777E) : _categoryRed)
+            : (dark ? _categoryDarkGreen : _categoryGreen);
         final textColor = dark ? _categoryDarkText : _categoryText;
         final cardColor = dark ? _categoryDarkCard : Colors.white;
 
@@ -605,7 +619,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   Widget _typeSelector({required String type, required IconData icon}) {
     final isSelected = selectedType == type;
-    final accent = _accent;
+    final accent = isSelected ? _typeColor : _muted;
 
     return Expanded(
       child: GestureDetector(
@@ -668,10 +682,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             width: 45,
             height: 45,
             decoration: BoxDecoration(
-              color: _accent.withValues(alpha: 0.13),
+              color: _typeColor.withValues(alpha: _isDark ? 0.17 : 0.09),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(category.icon, color: _accent, size: 23),
+            child: Icon(category.icon, color: _typeColor, size: 23),
           ),
           title: Text(
             category.name,
@@ -792,8 +806,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showCategoryDialog(),
-        backgroundColor: _accent,
-        foregroundColor: _isDark ? _categoryDarkBackground : Colors.white,
+        backgroundColor: _typeColor,
+        foregroundColor: Colors.white,
         elevation: 3,
         icon: const Icon(Icons.add_rounded),
         label: const Text(
@@ -866,11 +880,13 @@ class _CategoryEditorDialog extends StatefulWidget {
   final Category? category;
   final bool isDark;
   final Future<IconData?> Function() showIconPicker;
+  final String type;
 
   const _CategoryEditorDialog({
     required this.category,
     required this.isDark,
     required this.showIconPicker,
+    required this.type,
   });
 
   @override
@@ -891,7 +907,13 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
 
   Color get _muted => _isDark ? _categoryDarkMuted : _categoryMuted;
 
-  Color get _accent => _isDark ? _categoryDarkPurple : _categoryPurple;
+  Color get _accent {
+    if (widget.type == "Expense") {
+      return _isDark ? const Color(0xFFFF777E) : _categoryRed;
+    }
+
+    return _isDark ? _categoryDarkGreen : _categoryGreen;
+  }
 
   Color get _field => _isDark ? const Color(0xFF2A2538) : _categoryBackground;
 

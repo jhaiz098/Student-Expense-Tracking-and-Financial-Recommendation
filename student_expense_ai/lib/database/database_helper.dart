@@ -484,7 +484,20 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getBudget() async {
     final db = await database;
 
-    return await db.query('budgets', orderBy: 'createdAt DESC');
+    return await db.rawQuery('''
+    SELECT
+      budgets.id,
+      budgets.amount,
+      budgets.categoryId,
+      budgets.note,
+      budgets.createdAt,
+      budget_categories.name AS category,
+      budget_categories.icon AS categoryIcon
+    FROM budgets
+    INNER JOIN budget_categories
+      ON budgets.categoryId = budget_categories.id
+    ORDER BY budgets.createdAt DESC
+  ''');
   }
 
   Future<int> deleteBudget(int id) async {
@@ -535,7 +548,8 @@ class DatabaseHelper {
       expenses.note,
       expenses.createdAt,
       expenses.categoryId,
-      expense_categories.name AS category
+      expense_categories.name AS category,
+      expense_categories.icon AS categoryIcon
     FROM expenses
     INNER JOIN expense_categories
     ON expenses.categoryId = expense_categories.id

@@ -88,10 +88,16 @@ class TransactionTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: isDark ? 0.17 : 0.09),
+                    color: (isExpense ? expenseColor : incomeColor).withValues(
+                      alpha: isDark ? 0.17 : 0.09,
+                    ),
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: Icon(icon, color: primaryColor, size: 22),
+                  child: Icon(
+                    icon,
+                    color: isExpense ? expenseColor : incomeColor,
+                    size: 22,
+                  ),
                 ),
 
                 const SizedBox(width: 12),

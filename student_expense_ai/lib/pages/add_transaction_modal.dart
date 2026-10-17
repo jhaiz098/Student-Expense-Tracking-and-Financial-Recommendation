@@ -569,12 +569,16 @@ class _AddModalPageState extends State<AddModalPage> {
                   decoration: InputDecoration(
                     prefixIcon: Icon(
                       Icons.payments_outlined,
-                      color: _accent,
+                      color: selectedType == 'Expense'
+                          ? _expenseRed
+                          : _incomeGreen,
                       size: 21,
                     ),
                     prefixText: '₱ ',
                     prefixStyle: TextStyle(
-                      color: _accent,
+                      color: selectedType == 'Expense'
+                          ? _expenseRed
+                          : _incomeGreen,
                       fontSize: 19,
                       fontWeight: FontWeight.w700,
                     ),
@@ -602,7 +606,9 @@ class _AddModalPageState extends State<AddModalPage> {
                     hintStyle: TextStyle(color: _subtle, fontSize: 13),
                     prefixIcon: Icon(
                       Icons.notes_rounded,
-                      color: _accent,
+                      color: selectedType == 'Expense'
+                          ? _expenseRed
+                          : _incomeGreen,
                       size: 21,
                     ),
                     border: InputBorder.none,
@@ -654,7 +660,11 @@ class _AddModalPageState extends State<AddModalPage> {
                       avatar: Icon(
                         category.icon,
                         size: 16,
-                        color: selected ? Colors.white : _accent,
+                        color: selected
+                            ? Colors.white
+                            : selectedType == 'Expense'
+                            ? _expenseRed
+                            : _incomeGreen,
                       ),
                       label: Text(category.name),
                       selected: selected,
