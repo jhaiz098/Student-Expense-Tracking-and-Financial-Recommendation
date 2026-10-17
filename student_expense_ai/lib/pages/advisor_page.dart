@@ -7,6 +7,14 @@ import '../services/ai_service.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'dart:convert';
 
+const Color _advisorPurple = Color.fromARGB(255, 134, 118, 199);
+const Color _advisorBackground = Color(0xFFF7F7FB);
+const Color _advisorBorder = Color(0xFFECEAF3);
+const Color _advisorMuted = Color(0xFF6F6B82);
+const Color _advisorText = Color(0xFF29263A);
+const Color _advisorGreen = Color(0xFF159A75);
+const Color _advisorRed = Color(0xFFE05252);
+
 class AdvisorPage extends StatefulWidget {
   final GlobalKey advisorKey;
 
@@ -241,10 +249,8 @@ class _AdvisorPageState extends State<AdvisorPage> {
       final connectivity = await Connectivity().checkConnectivity();
 
       if (connectivity.contains(ConnectivityResult.none)) {
-        setState(() {
-          hasInternet = false;
-        });
-
+        if (!mounted) return;
+        setState(() => hasInternet = false);
         return;
       }
 
@@ -252,17 +258,15 @@ class _AdvisorPageState extends State<AdvisorPage> {
           .get(Uri.parse("https://www.google.com"))
           .timeout(const Duration(seconds: 5));
 
-      if (response.statusCode == 200) {
-        setState(() {
-          hasInternet = true;
-        });
-      } else {
-        setState(() {
-          hasInternet = false;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        hasInternet = response.statusCode == 200;
+      });
     } catch (e) {
-      print("Internet check failed: $e");
+      debugPrint("Internet check failed: $e");
+
+      if (!mounted) return;
 
       setState(() {
         hasInternet = false;
@@ -404,257 +408,492 @@ class _AdvisorPageState extends State<AdvisorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Advisor")),
-
+      backgroundColor: _advisorBackground,
+      appBar: AppBar(
+        backgroundColor: _advisorBackground,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          "Advisor",
+          style: TextStyle(
+            color: _advisorText,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: refresh,
-
+        color: _advisorPurple,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-
-          padding: const EdgeInsets.all(20),
-
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
               Showcase(
                 key: widget.advisorKey,
                 title: "AI Financial Advisor",
                 description:
-                    "Get personalized financial recommendations based on your recorded spending and budget information.",
-                targetBorderRadius: BorderRadius.circular(12),
+                    "Get personalized financial recommendations based on "
+                    "your recorded spending and budget information.",
+                targetBorderRadius: BorderRadius.circular(16),
                 overlayOpacity: 0.65,
-                tooltipBackgroundColor: Colors.deepPurple,
+                tooltipBackgroundColor: _advisorPurple,
                 tooltipBorderRadius: BorderRadius.circular(16),
                 tooltipPadding: const EdgeInsets.all(16),
                 textColor: Colors.white,
-
                 titleTextStyle: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
-
                 descTextStyle: const TextStyle(
                   fontSize: 14,
                   height: 1.4,
                   color: Colors.white,
                 ),
-
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              hasInternet ? Icons.cloud_done : Icons.cloud_off,
-                              color: hasInternet ? Colors.green : Colors.red,
-                            ),
-
-                            const SizedBox(width: 8),
-
-                            Text(
-                              hasInternet
-                                  ? "Internet Connected"
-                                  : "No Internet Connection",
-
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        Text(
-                          !hasInternet
-                              ? 'Connect to the internet to use AI Advisor.'
-                              : isCooldownActive
-                              ? 'You can generate new advice in:'
-                              : recommendations.isNotEmpty
-                              ? 'You can generate new advice now.'
-                              : 'AI advice can be generated once every 7 days.',
-                        ),
-
-                        if (hasInternet && isCooldownActive) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            formatDuration(cooldownRemaining),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple,
-                            ),
-                          ),
-                        ],
-
-                        if (recommendationGeneratedAt != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Last generated: ${formatDateTime(recommendationGeneratedAt)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-
-                        if (nextAvailableAt != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Next available: ${formatDateTime(nextAvailableAt)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-
-                        const SizedBox(height: 15),
-
-                        SizedBox(
-                          width: double.infinity,
-
-                          child: ElevatedButton.icon(
-                            onPressed:
-                                hasInternet &&
-                                    !isGenerating &&
-                                    !isCooldownActive
-                                ? showAIConfirmation
-                                : null,
-
-                            icon: const Icon(Icons.psychology),
-
-                            label: const Text("Generate AI Advice"),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                child: _buildAdvisorStatusCard(),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              if (isGenerating)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-
-              if (!isGenerating && recommendations.isNotEmpty) ...[
-                const Text(
-                  "Your Recommendations",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 12),
-
-                ...recommendations.asMap().entries.map((entry) {
-                  final recommendation = entry.value;
-
-                  final title = recommendation["title"] ?? "Recommendation";
-
-                  final type = recommendation["type"] ?? "general";
-
-                  IconData icon = Icons.lightbulb_outline;
-                  Color backgroundColor = Colors.deepPurple.shade50;
-                  Color iconColor = Colors.deepPurple;
-
-                  if (type == "budget") {
-                    icon = Icons.account_balance_wallet_outlined;
-                    backgroundColor = Colors.deepPurple.shade50;
-                    iconColor = Colors.deepPurple;
-                  } else if (type == "food") {
-                    icon = Icons.restaurant_outlined;
-                    backgroundColor = Colors.orange.shade50;
-                    iconColor = Colors.orange.shade800;
-                  } else if (type == "transportation") {
-                    icon = Icons.directions_bus_outlined;
-                    backgroundColor = Colors.blue.shade50;
-                    iconColor = Colors.blue.shade800;
-                  } else if (type == "saving") {
-                    icon = Icons.savings_outlined;
-                    backgroundColor = Colors.green.shade50;
-                    iconColor = Colors.green.shade800;
-                  } else if (type == "spending") {
-                    icon = Icons.trending_up;
-                    backgroundColor = Colors.red.shade50;
-                    iconColor = Colors.red.shade800;
-                  } else if (type == "warning") {
-                    icon = Icons.warning_amber_outlined;
-                    backgroundColor = Colors.amber.shade50;
-                    iconColor = Colors.amber.shade800;
-                  }
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 23,
                     decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(16),
+                      color: _advisorPurple,
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: iconColor.withValues(alpha: 0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(icon, color: iconColor, size: 24),
-                          ),
-
-                          const SizedBox(width: 14),
-
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: iconColor,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 6),
-
-                                Text(
-                                  recommendation["message"] ?? "",
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 1.45,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                  ),
+                  const SizedBox(width: 9),
+                  const Expanded(
+                    child: Text(
+                      "Your Recommendations",
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: _advisorText,
                       ),
                     ),
-                  );
-                }),
-              ],
+                  ),
+                  if (recommendations.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _advisorPurple.withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "${recommendations.length}",
+                        style: const TextStyle(
+                          color: _advisorPurple,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
+
+              if (isGenerating)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 30),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _advisorBorder),
+                  ),
+                  child: const Column(
+                    children: [
+                      CircularProgressIndicator(
+                        color: _advisorPurple,
+                        strokeWidth: 3,
+                      ),
+                      SizedBox(height: 14),
+                      Text(
+                        "Analyzing your spending...",
+                        style: TextStyle(
+                          color: _advisorText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        "Preparing personalized recommendations",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: _advisorMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                )
+              else if (recommendations.isEmpty)
+                _buildEmptyRecommendations()
+              else
+                ...recommendations.map(_buildRecommendationCard),
+
+              const SizedBox(height: 8),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAdvisorStatusCard() {
+    final statusColor = hasInternet ? _advisorGreen : _advisorRed;
+
+    final statusText = hasInternet
+        ? "Internet Connected"
+        : "No Internet Connection";
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _advisorBorder),
+        boxShadow: [
+          BoxShadow(
+            color: _advisorPurple.withValues(alpha: 0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  hasInternet
+                      ? Icons.cloud_done_rounded
+                      : Icons.cloud_off_rounded,
+                  color: statusColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusText,
+                      style: const TextStyle(
+                        color: _advisorText,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      hasInternet
+                          ? "Ready to connect to the AI advisor"
+                          : "Check your connection to use AI advice",
+                      style: const TextStyle(
+                        color: _advisorMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+          Container(height: 1, color: const Color(0xFFE2DFEC)),
+          const SizedBox(height: 15),
+
+          if (isCooldownActive) ...[
+            const Text(
+              "NEXT RECOMMENDATION AVAILABLE IN",
+              style: TextStyle(
+                fontSize: 10,
+                letterSpacing: 0.7,
+                fontWeight: FontWeight.w700,
+                color: _advisorMuted,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  color: _advisorPurple,
+                  size: 21,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    formatDuration(cooldownRemaining),
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: _advisorPurple,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else
+            Text(
+              recommendations.isEmpty
+                  ? "Generate AI advice to receive personalized recommendations "
+                        "based on your spending habits."
+                  : "You can generate new advice now.",
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: _advisorMuted,
+              ),
+            ),
+
+          if (recommendationGeneratedAt != null) ...[
+            const SizedBox(height: 14),
+            _buildTimestampRow(
+              Icons.history_rounded,
+              "Last generated",
+              formatDateTime(recommendationGeneratedAt),
+            ),
+          ],
+
+          if (nextAvailableAt != null) ...[
+            const SizedBox(height: 8),
+            _buildTimestampRow(
+              Icons.event_available_rounded,
+              "Next available",
+              formatDateTime(nextAvailableAt),
+            ),
+          ],
+
+          const SizedBox(height: 16),
+
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: hasInternet && !isGenerating && !isCooldownActive
+                  ? showAIConfirmation
+                  : null,
+              icon: const Icon(Icons.psychology_rounded, size: 20),
+              label: const Text(
+                "Generate AI Advice",
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _advisorPurple,
+                foregroundColor: Colors.white,
+
+                // Gray when a recommendation is on cooldown or internet is unavailable.
+                disabledBackgroundColor: const Color(0xFFE5E3EB),
+                disabledForegroundColor: const Color(0xFF777386),
+
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimestampRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 15, color: _advisorMuted),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            "$label: $value",
+            style: const TextStyle(
+              color: _advisorMuted,
+              fontSize: 11,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecommendationCard(Map<String, dynamic> recommendation) {
+    final title = recommendation["title"]?.toString() ?? "Recommendation";
+    final message = recommendation["message"]?.toString() ?? "";
+    final type = recommendation["type"]?.toString() ?? "general";
+
+    IconData icon = Icons.lightbulb_outline_rounded;
+    Color accent = _advisorPurple;
+    Color tint = const Color(0xFFF0ECFF);
+
+    switch (type) {
+      case "budget":
+        icon = Icons.account_balance_wallet_outlined;
+        accent = const Color(0xFF6545D6);
+        tint = const Color(0xFFEAE3FF);
+        break;
+
+      case "food":
+        icon = Icons.restaurant_outlined;
+        accent = const Color(0xFFE07816);
+        tint = const Color(0xFFFFE8CF);
+        break;
+
+      case "transportation":
+        icon = Icons.directions_bus_outlined;
+        accent = const Color(0xFF2374D8);
+        tint = const Color(0xFFDCEBFF);
+        break;
+
+      case "saving":
+        icon = Icons.savings_outlined;
+        accent = const Color(0xFF079669);
+        tint = const Color(0xFFD7F5E8);
+        break;
+
+      case "spending":
+        icon = Icons.trending_up_rounded;
+        accent = const Color(0xFFE04444);
+        tint = const Color(0xFFFFDEDE);
+        break;
+
+      case "warning":
+        icon = Icons.warning_amber_rounded;
+        accent = const Color(0xFFB77900);
+        tint = const Color(0xFFFFEDB5);
+        break;
+
+      default:
+        icon = Icons.lightbulb_outline_rounded;
+        accent = const Color(0xFF6545D6);
+        tint = const Color(0xFFEAE3FF);
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: tint,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: accent, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: accent,
+                  ),
+                ),
+                if (message.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    message,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: Color(0xFF514D66),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyRecommendations() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _advisorBorder),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: _advisorPurple.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.psychology_alt_rounded,
+              color: _advisorPurple,
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            "No recommendations yet",
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: _advisorText,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            "Generate AI advice to get insights and suggestions "
+            "based on your spending habits.",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, height: 1.5, color: _advisorMuted),
+          ),
+        ],
       ),
     );
   }
