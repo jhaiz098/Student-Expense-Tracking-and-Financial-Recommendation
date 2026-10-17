@@ -8,39 +8,56 @@ class TransactionDetailsPage extends StatelessWidget {
   const TransactionDetailsPage({super.key, required this.transaction});
 
   static const Color _primary = Color(0xFF5B45B5);
-  static const Color _background = Color(0xFFF7F7FB);
-  static const Color _border = Color(0xFFECEAF3);
-  static const Color _muted = Color(0xFF85839A);
   static const Color _expense = Color(0xFFE05252);
   static const Color _income = Color(0xFF159A75);
 
   @override
   Widget build(BuildContext context) {
-    final bool isExpense = transaction['type'] == 'Expense';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final String category = transaction['category']?.toString() ?? 'Unknown';
+    final background = isDark
+        ? const Color(0xFF15131E)
+        : const Color(0xFFF7F7FB);
 
-    final String type = transaction['type']?.toString() ?? 'Unknown';
+    final cardColor = isDark ? const Color(0xFF211D2D) : Colors.white;
 
-    final String rawNote = transaction['note']?.toString().trim() ?? '';
+    final borderColor = isDark
+        ? const Color(0xFF393246)
+        : const Color(0xFFE7E4F0);
 
-    final String note = rawNote.isNotEmpty ? rawNote : 'No description';
+    final textColor = isDark
+        ? const Color(0xFFF5F2FF)
+        : const Color(0xFF29263A);
 
-    final double amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
+    final mutedColor = isDark
+        ? const Color(0xFFB7B2C8)
+        : const Color(0xFF85839A);
 
-    final DateTime? date = DateTime.tryParse(
-      transaction['createdAt']?.toString() ?? '',
-    );
+    final primaryColor = isDark ? const Color(0xFFB9A8FF) : _primary;
 
-    final String formattedDate = date != null
+    final isExpense = transaction['type'] == 'Expense';
+
+    final category = transaction['category']?.toString() ?? 'Unknown';
+
+    final type = transaction['type']?.toString() ?? 'Unknown';
+
+    final rawNote = transaction['note']?.toString().trim() ?? '';
+
+    final note = rawNote.isNotEmpty ? rawNote : 'No description';
+
+    final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
+
+    final date = DateTime.tryParse(transaction['createdAt']?.toString() ?? '');
+
+    final formattedDate = date != null
         ? DateFormat('MMMM d, yyyy').format(date)
         : 'Date unavailable';
 
-    final String formattedTime = date != null
-        ? DateFormat('h:mm a').format(date)
-        : '';
+    final formattedTime = date != null ? DateFormat('h:mm a').format(date) : '';
 
-    final Color amountColor = isExpense ? _expense : _income;
+    final amountColor = isExpense
+        ? (isDark ? const Color(0xFFFF777E) : _expense)
+        : (isDark ? const Color(0xFF54D6A4) : _income);
 
     final currencyFormat = NumberFormat.currency(
       locale: 'en_PH',
@@ -49,23 +66,24 @@ class TransactionDetailsPage extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: background,
       appBar: AppBar(
-        backgroundColor: _background,
+        backgroundColor: background,
+        foregroundColor: textColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          color: _primary,
+          color: primaryColor,
           tooltip: 'Back',
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Transaction Details',
           style: TextStyle(
             fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF29263D),
+            fontWeight: FontWeight.w800,
+            color: textColor,
           ),
         ),
         actions: [
@@ -73,10 +91,12 @@ class TransactionDetailsPage extends StatelessWidget {
             padding: const EdgeInsets.only(right: 12),
             child: IconButton(
               icon: const Icon(Icons.edit_outlined),
-              color: _primary,
+              color: primaryColor,
               tooltip: 'Edit transaction',
               style: IconButton.styleFrom(
-                backgroundColor: _primary.withValues(alpha: 0.08),
+                backgroundColor: primaryColor.withValues(
+                  alpha: isDark ? 0.16 : 0.08,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -100,13 +120,24 @@ class TransactionDetailsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Main transaction summary — unchanged
+            // Main transaction summary
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _border),
+                color: cardColor,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: borderColor),
+                boxShadow: isDark
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF29263A,
+                          ).withValues(alpha: 0.03),
+                          blurRadius: 16,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
               ),
               child: Column(
                 children: [
@@ -114,7 +145,9 @@ class TransactionDetailsPage extends StatelessWidget {
                     width: 76,
                     height: 76,
                     decoration: BoxDecoration(
-                      color: amountColor.withValues(alpha: 0.09),
+                      color: amountColor.withValues(
+                        alpha: isDark ? 0.16 : 0.09,
+                      ),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Icon(
@@ -129,20 +162,24 @@ class TransactionDetailsPage extends StatelessWidget {
                   Text(
                     category,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF29263D),
+                      fontWeight: FontWeight.w800,
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    '${isExpense ? '-' : '+'}${currencyFormat.format(amount)}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 29,
-                      fontWeight: FontWeight.w800,
-                      color: amountColor,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${isExpense ? '-' : '+'}${currencyFormat.format(amount)}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                        color: amountColor,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -152,43 +189,51 @@ class TransactionDetailsPage extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: amountColor.withValues(alpha: 0.08),
+                      color: amountColor.withValues(
+                        alpha: isDark ? 0.14 : 0.08,
+                      ),
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: amountColor.withValues(alpha: 0.18),
+                      ),
                     ),
                     child: Text(
                       type,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: amountColor,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  const Divider(color: _border, height: 1),
+                  const SizedBox(height: 20),
+                  Divider(color: borderColor, height: 1),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.calendar_today_outlined,
                         size: 15,
-                        color: _muted,
+                        color: mutedColor,
                       ),
-                      const SizedBox(width: 7),
-                      Flexible(
-                        child: Text(
-                          formattedDate,
-                          style: const TextStyle(fontSize: 13, color: _muted),
-                        ),
+                      Text(
+                        formattedDate,
+                        style: TextStyle(fontSize: 13, color: mutedColor),
                       ),
                       if (formattedTime.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        const Text('•', style: TextStyle(color: _muted)),
-                        const SizedBox(width: 8),
+                        Text('•', style: TextStyle(color: mutedColor)),
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 15,
+                          color: mutedColor,
+                        ),
                         Text(
                           formattedTime,
-                          style: const TextStyle(fontSize: 13, color: _muted),
+                          style: TextStyle(fontSize: 13, color: mutedColor),
                         ),
                       ],
                     ],
@@ -197,31 +242,32 @@ class TransactionDetailsPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 26),
 
-            // Description section — redesigned
-            const Text(
+            // Description heading
+            Text(
               'Description',
               style: TextStyle(
                 fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF29263D),
+                fontWeight: FontWeight.w800,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 5),
-            const Text(
+            Text(
               'Additional details for this transaction',
-              style: TextStyle(fontSize: 12, color: _muted),
+              style: TextStyle(fontSize: 12, color: mutedColor),
             ),
             const SizedBox(height: 14),
 
+            // Description card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _border),
+                color: cardColor,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: borderColor),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,12 +276,14 @@ class TransactionDetailsPage extends StatelessWidget {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: _primary.withValues(alpha: 0.08),
+                      color: primaryColor.withValues(
+                        alpha: isDark ? 0.16 : 0.08,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.notes_rounded,
-                      color: _primary,
+                      color: primaryColor,
                       size: 21,
                     ),
                   ),
@@ -250,10 +298,8 @@ class TransactionDetailsPage extends StatelessWidget {
                           fontWeight: rawNote.isNotEmpty
                               ? FontWeight.w500
                               : FontWeight.w400,
-                          color: rawNote.isNotEmpty
-                              ? const Color(0xFF29263D)
-                              : _muted,
-                          height: 1.5,
+                          color: rawNote.isNotEmpty ? textColor : mutedColor,
+                          height: 1.6,
                         ),
                       ),
                     ),

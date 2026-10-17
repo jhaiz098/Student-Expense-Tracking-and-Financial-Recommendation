@@ -24,11 +24,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   static const Color _primary = Color(0xFF5B45B5);
-  static const Color _background = Color(0xFFF7F7FB);
   static const Color _green = Color(0xFF159A75);
   static const Color _orange = Color(0xFFF59E0B);
   static const Color _red = Color(0xFFE05252);
-  static const Color _border = Color(0xFFECEAF3);
 
   final NumberFormat _money = NumberFormat.currency(
     locale: 'en_PH',
@@ -42,6 +40,33 @@ class _HomePageState extends State<HomePage> {
   double monthlyExpenses = 0;
   String currentMonth = DateFormat('MMMM').format(DateTime.now());
   String fullName = '';
+
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _background =>
+      _isDark ? const Color(0xFF15131E) : const Color(0xFFF7F7FB);
+
+  Color get _cardColor => _isDark ? const Color(0xFF211D2D) : Colors.white;
+
+  Color get _textColor =>
+      _isDark ? const Color(0xFFF5F2FF) : const Color(0xFF29263A);
+
+  Color get _mutedColor =>
+      _isDark ? const Color(0xFFB7B2C8) : const Color(0xFF6F6B82);
+
+  Color get _borderColor =>
+      _isDark ? const Color(0xFF393246) : const Color(0xFFE7E4F0);
+
+  Color get _accentColor => _isDark ? const Color(0xFFB9A8FF) : _primary;
+
+  Color get _progressBackground =>
+      _isDark ? const Color(0xFF393246) : const Color(0xFFECEAF3);
+
+  Color get _noteBackground =>
+      _isDark ? const Color(0xFF282239) : const Color(0xFFF6F4FC);
+
+  Color get _noteBorder =>
+      _isDark ? const Color(0xFF40365E) : const Color(0xFFE9E4FA);
 
   @override
   void initState() {
@@ -138,7 +163,7 @@ class _HomePageState extends State<HomePage> {
   Color getBudgetColor(int percentage) {
     if (percentage >= budgetReminder) return _red;
     if (percentage >= budgetReminder - 20) return _orange;
-    return _green;
+    return _isDark ? const Color(0xFF54D6A4) : _green;
   }
 
   @override
@@ -155,41 +180,38 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: _background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Home',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          style: TextStyle(fontWeight: FontWeight.w800, color: _textColor),
         ),
         centerTitle: false,
         backgroundColor: _background,
+        foregroundColor: _textColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
       ),
       body: RefreshIndicator(
         onRefresh: refresh,
-        color: _primary,
+        color: _accentColor,
+        backgroundColor: _cardColor,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
           children: [
             Text(
               'Hello, ${fullName.isNotEmpty ? fullName : 'there'}!',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 27,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.6,
-                color: Color(0xFF252238),
+                color: _textColor,
               ),
             ),
             const SizedBox(height: 5),
-            const Text(
+            Text(
               "Here's your financial overview for this month.",
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                height: 1.4,
-              ),
+              style: TextStyle(fontSize: 13, color: _mutedColor, height: 1.4),
             ),
-
             const SizedBox(height: 20),
 
             // Monthly Budget
@@ -219,13 +241,31 @@ class _HomePageState extends State<HomePage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isOverBudget ? _red : _primary,
-                  borderRadius: BorderRadius.circular(18),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isOverBudget
+                        ? [
+                            const Color(0xFFB83245),
+                            _isDark
+                                ? const Color(0xFF702938)
+                                : const Color(0xFF9E3547),
+                          ]
+                        : _isDark
+                        ? [const Color(0xFF7560D5), const Color(0xFF49368F)]
+                        : [const Color(0xFF6B54C7), const Color(0xFF4B359D)],
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                  border: _isDark
+                      ? Border.all(color: Colors.white.withValues(alpha: 0.10))
+                      : null,
                   boxShadow: [
                     BoxShadow(
-                      color: (isOverBudget ? _red : _primary).withOpacity(0.12),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+                      color: (isOverBudget ? _red : _primary).withValues(
+                        alpha: _isDark ? 0.18 : 0.14,
+                      ),
+                      blurRadius: 22,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
@@ -238,7 +278,7 @@ class _HomePageState extends State<HomePage> {
                           child: Text(
                             'Remaining Budget',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Color(0xFFDCD5FF),
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -250,8 +290,11 @@ class _HomePageState extends State<HomePage> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
+                            color: Colors.white.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.10),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -300,14 +343,17 @@ class _HomePageState extends State<HomePage> {
                       Text(
                         '${_money.format(getExcessSpending())} over your budget',
                         style: const TextStyle(
-                          color: Colors.white70,
+                          color: Color(0xFFFFE0E2),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                     const SizedBox(height: 22),
-                    Container(height: 1, color: Colors.white.withOpacity(0.2)),
+                    Container(
+                      height: 1,
+                      color: Colors.white.withValues(alpha: 0.20),
+                    ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -341,6 +387,7 @@ class _HomePageState extends State<HomePage> {
               description:
                   'Monitor how much of your monthly budget you have already used.',
               targetBorderRadius: BorderRadius.circular(18),
+              overlayColor: Colors.black,
               overlayOpacity: 0.65,
               tooltipBackgroundColor: _primary,
               tooltipBorderRadius: BorderRadius.circular(16),
@@ -362,14 +409,15 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Row(
                       children: [
-                        _iconBox(Icons.pie_chart_outline_rounded, _primary),
+                        _iconBox(Icons.pie_chart_outline_rounded, _accentColor),
                         const SizedBox(width: 10),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Budget Usage',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
+                              color: _textColor,
                             ),
                           ),
                         ),
@@ -388,17 +436,18 @@ class _HomePageState extends State<HomePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Spent',
-                          style: TextStyle(color: Colors.black54, fontSize: 11),
+                          style: TextStyle(color: _mutedColor, fontSize: 11),
                         ),
                         Flexible(
                           child: Text(
                             '${_money.format(monthlyExpenses)} / ${_money.format(monthlyBudget)}',
                             textAlign: TextAlign.right,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
+                              color: _textColor,
                             ),
                           ),
                         ),
@@ -410,11 +459,11 @@ class _HomePageState extends State<HomePage> {
                       child: LinearProgressIndicator(
                         value: budgetUsage.clamp(0.0, 1.0),
                         minHeight: 9,
-                        backgroundColor: const Color(0xFFECEAF3),
+                        backgroundColor: _progressBackground,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           hasBudget
                               ? getBudgetColor(budgetPercentage)
-                              : _primary,
+                              : _accentColor,
                         ),
                       ),
                     ),
@@ -428,7 +477,7 @@ class _HomePageState extends State<HomePage> {
                       style: TextStyle(
                         fontSize: 11,
                         height: 1.4,
-                        color: isOverBudget ? _red : Colors.black54,
+                        color: isOverBudget ? _red : _mutedColor,
                         fontWeight: isOverBudget
                             ? FontWeight.w700
                             : FontWeight.normal,
@@ -465,20 +514,21 @@ class _HomePageState extends State<HomePage> {
             // Recent Transactions heading
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Recent Transactions',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.3,
+                      color: _textColor,
                     ),
                   ),
                 ),
                 TextButton(
                   onPressed: _openAllTransactions,
                   style: TextButton.styleFrom(
-                    foregroundColor: _primary,
+                    foregroundColor: _accentColor,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
                   child: const Text(
@@ -489,41 +539,40 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: 3),
-            const Text(
+            Text(
               'Your latest recorded expenses and budget transactions.',
-              style: TextStyle(
-                color: Colors.black54,
-                fontSize: 12,
-                height: 1.4,
-              ),
+              style: TextStyle(color: _mutedColor, fontSize: 12, height: 1.4),
             ),
             const SizedBox(height: 12),
 
             if (recentTransactions.isEmpty)
               _panel(
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 18),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   child: Column(
                     children: [
                       Icon(
                         Icons.receipt_long_outlined,
                         size: 34,
-                        color: Color(0xFF9A94B0),
+                        color: _isDark
+                            ? const Color(0xFFA69BBF)
+                            : const Color(0xFF9A94B0),
                       ),
-                      SizedBox(height: 10),
+                      const SizedBox(height: 10),
                       Text(
                         'No transactions yet',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
+                          color: _textColor,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Your recent transactions will appear here once you add them.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.black54,
+                          color: _mutedColor,
                           fontSize: 12,
                           height: 1.4,
                         ),
@@ -536,9 +585,20 @@ class _HomePageState extends State<HomePage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: _cardColor,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: _border),
+                  border: Border.all(color: _borderColor),
+                  boxShadow: _isDark
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF29263A,
+                            ).withValues(alpha: 0.025),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                 ),
                 child: Column(
                   children: recentTransactions.asMap().entries.map((entry) {
@@ -587,9 +647,9 @@ class _HomePageState extends State<HomePage> {
                           },
                         ),
                         if (index != recentTransactions.length - 1)
-                          const Divider(
+                          Divider(
                             height: 1,
-                            color: _border,
+                            color: _borderColor,
                             indent: 8,
                             endIndent: 8,
                           ),
@@ -615,7 +675,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 11),
+          style: const TextStyle(color: Color(0xFFDCD5FF), fontSize: 11),
         ),
         const SizedBox(height: 5),
         Text(
@@ -635,9 +695,18 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _border),
+        border: Border.all(color: _borderColor),
+        boxShadow: _isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF29263A).withValues(alpha: 0.025),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: child,
     );
@@ -648,7 +717,7 @@ class _HomePageState extends State<HomePage> {
       width: 38,
       height: 38,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: color.withValues(alpha: _isDark ? 0.16 : 0.10),
         borderRadius: BorderRadius.circular(11),
       ),
       child: Icon(icon, color: color, size: 20),
@@ -665,9 +734,11 @@ class _HomePageState extends State<HomePage> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: _isDark ? 0.12 : 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.18)),
+        border: Border.all(
+          color: color.withValues(alpha: _isDark ? 0.28 : 0.18),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -689,7 +760,11 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 3),
                 Text(
                   message,
-                  style: TextStyle(color: color, fontSize: 11, height: 1.4),
+                  style: TextStyle(
+                    color: _isDark ? _textColor : color,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -703,23 +778,19 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F4FC),
+        color: _noteBackground,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFFE9E4FA)),
+        border: Border.all(color: _noteBorder),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, color: _primary, size: 18),
-          SizedBox(width: 9),
+          Icon(Icons.info_outline_rounded, color: _accentColor, size: 18),
+          const SizedBox(width: 9),
           Expanded(
             child: Text(
               'Your overview is based on the expenses and budget records saved in the app.',
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.45,
-                color: Colors.black54,
-              ),
+              style: TextStyle(fontSize: 11, height: 1.45, color: _mutedColor),
             ),
           ),
         ],

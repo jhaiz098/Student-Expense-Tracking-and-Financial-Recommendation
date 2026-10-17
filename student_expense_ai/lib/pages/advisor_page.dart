@@ -408,9 +408,9 @@ class _AdvisorPageState extends State<AdvisorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _advisorBackground,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: _advisorBackground,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,

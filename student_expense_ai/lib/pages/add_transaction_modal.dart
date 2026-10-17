@@ -394,10 +394,10 @@ class _AddModalPageState extends State<AddModalPage> {
     final isEditing = widget.transaction != null;
 
     return Scaffold(
-      backgroundColor: _pageBackground,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        backgroundColor: _pageBackground,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,

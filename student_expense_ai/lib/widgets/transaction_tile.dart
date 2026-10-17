@@ -27,13 +27,33 @@ class TransactionTile extends StatelessWidget {
   });
 
   static const Color _primary = Color(0xFF5B45B5);
-  static const Color _border = Color(0xFFECEAF3);
-  static const Color _muted = Color(0xFF85839A);
   static const Color _expense = Color(0xFFE05252);
   static const Color _income = Color(0xFF159A75);
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final cardColor = isDark ? const Color(0xFF211D2D) : Colors.white;
+
+    final borderColor = isDark
+        ? const Color(0xFF393246)
+        : const Color(0xFFE7E4F0);
+
+    final textColor = isDark
+        ? const Color(0xFFF5F2FF)
+        : const Color(0xFF29263A);
+
+    final mutedColor = isDark
+        ? const Color(0xFFB7B2C8)
+        : const Color(0xFF85839A);
+
+    final primaryColor = isDark ? const Color(0xFFB9A8FF) : _primary;
+
+    final expenseColor = isDark ? const Color(0xFFFF777E) : _expense;
+
+    final incomeColor = isDark ? const Color(0xFF54D6A4) : _income;
+
     final createdAt = DateTime.tryParse(
       transaction['createdAt']?.toString() ?? '',
     );
@@ -42,14 +62,14 @@ class TransactionTile extends StatelessWidget {
         ? DateFormat('MMM d, yyyy').format(createdAt)
         : 'Date unavailable';
 
-    final amountColor = isExpense ? _expense : _income;
+    final amountColor = isExpense ? expenseColor : incomeColor;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border),
+        border: Border.all(color: borderColor),
       ),
       child: Material(
         color: Colors.transparent,
@@ -68,10 +88,10 @@ class TransactionTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: _primary.withValues(alpha: 0.09),
+                    color: primaryColor.withValues(alpha: isDark ? 0.17 : 0.09),
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: Icon(icon, color: _primary, size: 22),
+                  child: Icon(icon, color: primaryColor, size: 22),
                 ),
 
                 const SizedBox(width: 12),
@@ -86,10 +106,10 @@ class TransactionTile extends StatelessWidget {
                         category,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF29263D),
+                          fontWeight: FontWeight.w700,
+                          color: textColor,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -97,15 +117,15 @@ class TransactionTile extends StatelessWidget {
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: _muted),
+                        style: TextStyle(fontSize: 12, color: mutedColor),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.calendar_today_outlined,
                             size: 11,
-                            color: _muted,
+                            color: mutedColor,
                           ),
                           const SizedBox(width: 4),
                           Flexible(
@@ -113,10 +133,7 @@ class TransactionTile extends StatelessWidget {
                               formattedDate,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: _muted,
-                              ),
+                              style: TextStyle(fontSize: 11, color: mutedColor),
                             ),
                           ),
                         ],
@@ -137,7 +154,7 @@ class TransactionTile extends StatelessWidget {
                       maxLines: 1,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: amountColor,
                       ),
                     ),
@@ -148,7 +165,8 @@ class TransactionTile extends StatelessWidget {
                         _ActionButton(
                           icon: Icons.edit_outlined,
                           tooltip: 'Edit',
-                          color: _primary,
+                          color: primaryColor,
+                          isDark: isDark,
                           onPressed: () async {
                             await onEdit();
                           },
@@ -157,39 +175,53 @@ class TransactionTile extends StatelessWidget {
                         _ActionButton(
                           icon: Icons.delete_outline,
                           tooltip: 'Delete',
-                          color: _expense,
+                          color: expenseColor,
+                          isDark: isDark,
                           onPressed: () async {
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (dialogContext) => AlertDialog(
+                                backgroundColor: isDark
+                                    ? const Color(0xFF211D2D)
+                                    : Colors.white,
+                                surfaceTintColor: Colors.transparent,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
+                                  side: BorderSide(color: borderColor),
                                 ),
-                                title: const Text(
+                                title: Text(
                                   'Delete Transaction?',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
+                                    color: textColor,
                                   ),
                                 ),
-                                content: const Text(
+                                content: Text(
                                   'Are you sure you want to delete this transaction?',
+                                  style: TextStyle(
+                                    color: mutedColor,
+                                    height: 1.4,
+                                  ),
                                 ),
                                 actions: [
                                   TextButton(
                                     onPressed: () =>
                                         Navigator.pop(dialogContext, false),
-                                    child: const Text(
+                                    child: Text(
                                       'Cancel',
-                                      style: TextStyle(color: _muted),
+                                      style: TextStyle(color: mutedColor),
                                     ),
                                   ),
                                   TextButton(
                                     onPressed: () =>
                                         Navigator.pop(dialogContext, true),
-                                    child: const Text(
+                                    child: Text(
                                       'Delete',
-                                      style: TextStyle(color: _expense),
+                                      style: TextStyle(
+                                        color: expenseColor,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -218,12 +250,14 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final Color color;
+  final bool isDark;
   final VoidCallback onPressed;
 
   const _ActionButton({
     required this.icon,
     required this.tooltip,
     required this.color,
+    required this.isDark,
     required this.onPressed,
   });
 
@@ -237,7 +271,7 @@ class _ActionButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       iconSize: 18,
       style: IconButton.styleFrom(
-        backgroundColor: color.withValues(alpha: 0.08),
+        backgroundColor: color.withValues(alpha: isDark ? 0.14 : 0.08),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
       ),
       icon: Icon(icon, color: color),

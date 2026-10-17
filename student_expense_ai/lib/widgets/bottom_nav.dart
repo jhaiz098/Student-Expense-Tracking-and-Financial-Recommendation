@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../pages/add_transaction_modal.dart';
 import 'package:showcaseview/showcaseview.dart';
+
+import '../pages/add_transaction_modal.dart';
 
 class BottomNav extends StatelessWidget {
   final int currentIndex;
@@ -33,9 +34,9 @@ class BottomNav extends StatelessWidget {
     required this.onSettingsTutorialTap,
   });
 
-  // ------------------------------------------------------------
-  // Tutorial styling
-  // ------------------------------------------------------------
+  static const Color _purple = Color(0xFF5B45B5);
+  static const Color _lightBackground = Color(0xFFF7F7FB);
+  static const Color _lightBorder = Color(0xFFE7E4F0);
 
   Widget navShowcase({
     required GlobalKey key,
@@ -46,213 +47,236 @@ class BottomNav extends StatelessWidget {
   }) {
     return Showcase(
       key: key,
-
       title: title,
       description: description,
-
       targetBorderRadius: BorderRadius.circular(12),
-
       overlayOpacity: 0.65,
-
-      tooltipBackgroundColor: Colors.deepPurple,
-
+      tooltipBackgroundColor: _purple,
       tooltipBorderRadius: BorderRadius.circular(16),
-
       tooltipPadding: const EdgeInsets.all(16),
-
       textColor: Colors.white,
-
       titleTextStyle: const TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: Colors.white,
       ),
-
       descTextStyle: const TextStyle(
         fontSize: 14,
         height: 1.4,
         color: Colors.white,
       ),
-
-      // Makes the next highlight appear immediately.
       disableMovingAnimation: true,
       disableScaleAnimation: true,
-
-      // Prevent tapping the dark overlay from advancing.
       disableBarrierInteraction: true,
-
-      // Tapping the highlighted target closes this showcase.
       disposeOnTap: false,
-
-      // This is what lets the user physically tap
-      // Analytics / Advisor / Settings.
       onTargetClick: onTargetClick,
-
       child: child,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 90,
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
+    final barColor = isDark ? const Color(0xFF211D2D) : Colors.white;
+
+    final borderColor = isDark ? const Color(0xFF393246) : _lightBorder;
+
+    final selectedColor = isDark ? const Color(0xFFB9A8FF) : _purple;
+
+    final unselectedColor = isDark
+        ? const Color(0xFFB7B2C8)
+        : const Color(0xFF6F6B82);
+
+    return SizedBox(
+      height: 88,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
-
         children: [
-          // ------------------------------------------------------
-          // NAVIGATION BAR
-          // ------------------------------------------------------
-          NavigationBar(
-            height: 70,
-
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: "Home",
+          // Navigation bar
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 8,
+            child: Container(
+              height: 68,
+              decoration: BoxDecoration(
+                color: barColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: borderColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: isDark ? 0.16 : 0.045,
+                    ),
+                    blurRadius: 18,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: NavigationBar(
+                  height: 68,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  indicatorShape: const CircleBorder(),
+                  selectedIndex: currentIndex < 2
+                      ? currentIndex
+                      : currentIndex + 1,
+                  indicatorColor: selectedColor.withValues(alpha: 0.10),
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
+                    states,
+                  ) {
+                    final selected = states.contains(WidgetState.selected);
 
-              // ANALYTICS
-              NavigationDestination(
-                icon: navShowcase(
-                  key: analyticsNavKey,
+                    return TextStyle(
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? selectedColor : unselectedColor,
+                    );
+                  }),
+                  onDestinationSelected: (index) {
+                    // Reserve the middle position for the add button.
+                    if (index == 2) return;
 
-                  title: "Analytics",
+                    onTap(index > 2 ? index - 1 : index);
+                  },
+                  destinations: [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined, color: unselectedColor),
+                      selectedIcon: Icon(
+                        Icons.home_rounded,
+                        color: selectedColor,
+                      ),
+                      label: 'Home',
+                    ),
 
-                  description:
-                      "Tap Analytics to view your spending trends, categories, and monthly comparisons.",
+                    NavigationDestination(
+                      icon: navShowcase(
+                        key: analyticsNavKey,
+                        title: 'Analytics',
+                        description:
+                            'Tap Analytics to view your spending trends, categories, and monthly comparisons.',
+                        onTargetClick: onAnalyticsTutorialTap,
+                        child: Icon(
+                          Icons.analytics_outlined,
+                          color: unselectedColor,
+                        ),
+                      ),
+                      selectedIcon: Icon(
+                        Icons.analytics_rounded,
+                        color: selectedColor,
+                      ),
+                      label: 'Analytics',
+                    ),
 
-                  onTargetClick: onAnalyticsTutorialTap,
+                    // Center space for the floating add button.
+                    const NavigationDestination(
+                      icon: SizedBox(width: 32, height: 24),
+                      label: '',
+                    ),
 
-                  child: const Icon(Icons.analytics_outlined),
+                    NavigationDestination(
+                      icon: navShowcase(
+                        key: advisorNavKey,
+                        title: 'AI Advisor',
+                        description:
+                            'Tap Advisor to get personalized financial recommendations based on your spending.',
+                        onTargetClick: onAdvisorTutorialTap,
+                        child: Icon(
+                          Icons.smart_toy_outlined,
+                          color: unselectedColor,
+                        ),
+                      ),
+                      selectedIcon: Icon(
+                        Icons.smart_toy_rounded,
+                        color: selectedColor,
+                      ),
+                      label: 'Advisor',
+                    ),
+
+                    NavigationDestination(
+                      icon: navShowcase(
+                        key: settingsNavKey,
+                        title: 'Settings',
+                        description:
+                            'Tap Settings to manage your profile, currency, theme, reminders, categories, and other preferences.',
+                        onTargetClick: onSettingsTutorialTap,
+                        child: Icon(
+                          Icons.settings_outlined,
+                          color: unselectedColor,
+                        ),
+                      ),
+                      selectedIcon: Icon(
+                        Icons.settings_rounded,
+                        color: selectedColor,
+                      ),
+                      label: 'Settings',
+                    ),
+                  ],
                 ),
-
-                selectedIcon: const Icon(Icons.analytics),
-
-                label: "Analytics",
               ),
-
-              // CENTER EMPTY SPACE
-              const NavigationDestination(icon: SizedBox(), label: ""),
-
-              // ADVISOR
-              NavigationDestination(
-                icon: navShowcase(
-                  key: advisorNavKey,
-
-                  title: "AI Advisor",
-
-                  description:
-                      "Tap Advisor to get personalized financial recommendations based on your spending.",
-
-                  onTargetClick: onAdvisorTutorialTap,
-
-                  child: const Icon(Icons.smart_toy_outlined),
-                ),
-
-                selectedIcon: const Icon(Icons.smart_toy),
-
-                label: "Advisor",
-              ),
-
-              // SETTINGS
-              NavigationDestination(
-                icon: navShowcase(
-                  key: settingsNavKey,
-
-                  title: "Settings",
-
-                  description:
-                      "Tap Settings to manage your profile, currency, theme, reminders, categories, and other preferences.",
-
-                  onTargetClick: onSettingsTutorialTap,
-
-                  child: const Icon(Icons.settings),
-                ),
-
-                selectedIcon: const Icon(Icons.settings),
-
-                label: "Settings",
-              ),
-            ],
-
-            selectedIndex: currentIndex < 2 ? currentIndex : currentIndex + 1,
-
-            // ----------------------------------------------------
-            // NORMAL NAVIGATION
-            // ----------------------------------------------------
-            onDestinationSelected: (index) {
-              // Center "+" button
-              if (index == 2) {
-                return;
-              }
-
-              if (index > 2) {
-                onTap(index - 1);
-              } else {
-                onTap(index);
-              }
-            },
+            ),
           ),
 
-          // ------------------------------------------------------
-          // ADD TRANSACTION
-          // ------------------------------------------------------
+          // Floating add transaction button
           Positioned(
-            bottom: 7,
-
+            bottom: 22,
             child: Showcase(
               key: addTransactionKey,
-
-              title: "Add Transaction",
-
+              title: 'Add Transaction',
               description:
-                  "Use this button to record your monthly budget or an expense.",
-
+                  'Use this button to record your income or an expense.',
               targetBorderRadius: BorderRadius.circular(50),
-
               overlayOpacity: 0.65,
-
-              tooltipBackgroundColor: Colors.deepPurple,
-
+              tooltipBackgroundColor: _purple,
               tooltipBorderRadius: BorderRadius.circular(16),
-
               tooltipPadding: const EdgeInsets.all(16),
-
               textColor: Colors.white,
-
               titleTextStyle: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
-
               descTextStyle: const TextStyle(
                 fontSize: 14,
                 height: 1.4,
                 color: Colors.white,
               ),
-
               disableMovingAnimation: true,
               disableScaleAnimation: true,
-
-              child: FloatingActionButton(
-                onPressed: () async {
-                  final result = await showAddModal(context);
-
-                  if (result == true) {
-                    onTransactionAdded();
-                  }
-                },
-
-                elevation: 6,
-
+              child: Material(
+                color: _purple,
                 shape: const CircleBorder(),
+                elevation: 5,
+                shadowColor: _purple.withValues(alpha: 0.35),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () async {
+                    final result = await showAddModal(context);
 
-                child: const Icon(Icons.add, size: 30),
+                    if (result == true) {
+                      onTransactionAdded();
+                    }
+                  },
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: barColor, width: 4),
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      size: 30,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

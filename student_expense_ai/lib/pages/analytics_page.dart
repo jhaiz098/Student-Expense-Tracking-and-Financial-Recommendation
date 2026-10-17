@@ -18,10 +18,29 @@ class AnalyticsPage extends StatefulWidget {
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
   static const Color _primary = Color(0xFF5B45B5);
-  static const Color _background = Color(0xFFF7F7FB);
   static const Color _orange = Color(0xFFF59E0B);
   static const Color _green = Color(0xFF159A75);
   static const Color _red = Color(0xFFE05252);
+
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get _background =>
+      _isDark ? const Color(0xFF15131E) : const Color(0xFFF7F7FB);
+  Color get _card => _isDark ? const Color(0xFF211D2D) : Colors.white;
+  Color get _text =>
+      _isDark ? const Color(0xFFF5F2FF) : const Color(0xFF29263A);
+  Color get _muted =>
+      _isDark ? const Color(0xFFB7B2C8) : const Color(0xFF6F6B82);
+  Color get _subtle =>
+      _isDark ? const Color(0xFF928BA8) : const Color(0xFF8B8798);
+  Color get _border =>
+      _isDark ? const Color(0xFF393246) : const Color(0xFFE7E4F0);
+  Color get _softSurface =>
+      _isDark ? const Color(0xFF2A2538) : const Color(0xFFFAFAFD);
+  Color get _softPurple =>
+      _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
+  Color get _accent => _isDark ? const Color(0xFFB9A8FF) : _primary;
+  Color get _gridColor =>
+      _isDark ? const Color(0xFF393246) : const Color(0xFFECEAF3);
 
   final NumberFormat _money = NumberFormat.currency(
     locale: 'en_PH',
@@ -406,16 +425,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Scaffold(
       backgroundColor: _background,
       appBar: AppBar(
-        title: const Text('Analytics'),
+        title: Text('Analytics'),
         centerTitle: false,
         backgroundColor: _background,
-        actions: [
-          IconButton(
-            tooltip: 'Refresh analytics',
-            onPressed: loadAnalytics,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+        foregroundColor: _text,
       ),
       body: RefreshIndicator(
         onRefresh: refresh,
@@ -442,12 +455,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     tooltipBorderRadius: BorderRadius.circular(16),
                     tooltipPadding: const EdgeInsets.all(16),
                     textColor: Colors.white,
-                    titleTextStyle: const TextStyle(
+                    titleTextStyle: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
-                    descTextStyle: const TextStyle(
+                    descTextStyle: TextStyle(
                       fontSize: 14,
                       height: 1.4,
                       color: Colors.white,
@@ -512,9 +525,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE9E7F2)),
+        border: Border.all(color: _border),
       ),
       child: Row(
         children: [
@@ -522,24 +535,24 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: _primary.withOpacity(0.10),
+              color: _accent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.insights_rounded, color: _primary),
+            child: Icon(Icons.insights_rounded, color: _accent),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Analysis period',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                 ),
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
                 Text(
                   'Change the data range',
-                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                  style: TextStyle(color: _muted, fontSize: 12),
                 ),
               ],
             ),
@@ -553,7 +566,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   .map(
                     (period) => DropdownMenuItem(
                       value: period,
-                      child: Text(period, style: const TextStyle(fontSize: 12)),
+                      child: Text(period, style: TextStyle(fontSize: 12)),
                     ),
                   )
                   .toList(),
@@ -573,16 +586,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: const TextStyle(
-            color: Colors.black54,
-            height: 1.35,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: _muted, height: 1.35, fontSize: 12),
         ),
       ],
     );
@@ -595,7 +604,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         value: _money.format(_totalSpent),
         helper: 'All expenses entered in this period',
         icon: Icons.account_balance_wallet_outlined,
-        color: _primary,
+        color: _accent,
       ),
       _MetricData(
         label: 'Expenses recorded',
@@ -654,9 +663,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       constraints: const BoxConstraints(minHeight: 132),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: const Color(0xFFECEAF3)),
+        border: Border.all(color: _border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,7 +676,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: data.color.withOpacity(0.10),
+                  color: data.color.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(data.icon, color: data.color, size: 19),
@@ -676,24 +685,18 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            data.label,
-            style: const TextStyle(color: Colors.black54, fontSize: 11),
-          ),
+          Text(data.label, style: TextStyle(color: _muted, fontSize: 11)),
           const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               data.value,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(height: 3),
-          Text(
-            data.helper,
-            style: const TextStyle(color: Colors.black45, fontSize: 10),
-          ),
+          Text(data.helper, style: TextStyle(color: _subtle, fontSize: 10)),
         ],
       ),
     );
@@ -711,7 +714,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       insights.add(
         _InsightData(
           icon: Icons.pie_chart_outline_rounded,
-          color: _primary,
+          color: _accent,
           title: 'Category you spent the most on',
           text:
               '${topCategory.key} accounts for ${share.toStringAsFixed(1)}% of recorded spending (${_money.format(topCategory.value)}).',
@@ -801,7 +804,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: item.color.withOpacity(0.10),
+                              color: item.color.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(11),
                             ),
                             child: Icon(item.icon, color: item.color, size: 19),
@@ -813,7 +816,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                               children: [
                                 Text(
                                   item.title,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
                                   ),
@@ -821,8 +824,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                 const SizedBox(height: 3),
                                 Text(
                                   item.text,
-                                  style: const TextStyle(
-                                    color: Colors.black54,
+                                  style: TextStyle(
+                                    color: _muted,
                                     height: 1.4,
                                     fontSize: 12,
                                   ),
@@ -862,6 +865,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) =>
+                        FlLine(color: _gridColor, strokeWidth: 1),
                     horizontalInterval: maxValue <= 0 ? 20 : maxValue / 4,
                   ),
                   borderData: FlBorderData(show: false),
@@ -880,10 +885,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           padding: const EdgeInsets.only(right: 5),
                           child: Text(
                             _compactMoney(value),
-                            style: const TextStyle(
-                              fontSize: 9,
-                              color: Colors.black54,
-                            ),
+                            style: TextStyle(fontSize: 9, color: _muted),
                           ),
                         ),
                       ),
@@ -901,7 +903,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               data[index]['label'] as String,
-                              style: const TextStyle(fontSize: 10),
+                              style: TextStyle(fontSize: 10),
                             ),
                           );
                         },
@@ -914,7 +916,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         final label = data[spot.x.toInt()]['label'] as String;
                         return LineTooltipItem(
                           '$label\n${_money.format(spot.y)}',
-                          const TextStyle(
+                          TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 11,
@@ -936,13 +938,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           )
                           .toList(),
                       isCurved: false,
-                      color: _primary,
+                      color: _accent,
                       barWidth: 3,
                       isStrokeCapRound: true,
                       dotData: FlDotData(show: true),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: _primary.withOpacity(0.10),
+                        color: _accent.withValues(alpha: 0.12),
                       ),
                     ),
                   ],
@@ -976,21 +978,25 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF6F4FC),
+              color: _softPurple,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE9E4FA)),
+              border: Border.all(
+                color: _isDark
+                    ? const Color(0xFF4A3D68)
+                    : const Color(0xFFE9E4FA),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.speed_rounded, color: _primary, size: 20),
+                    Icon(Icons.speed_rounded, color: _accent, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         '$month pace estimate',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
                         ),
@@ -998,10 +1004,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ),
                     Text(
                       '$elapsedDays/$_daysInCurrentMonth days',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.black54,
-                      ),
+                      style: TextStyle(fontSize: 10, color: _muted),
                     ),
                   ],
                 ),
@@ -1029,47 +1032,40 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: _card,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.timeline_rounded,
-                        color: _primary,
-                        size: 19,
-                      ),
+                      Icon(Icons.timeline_rounded, color: _accent, size: 19),
                       const SizedBox(width: 9),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Estimated total by the end of the month',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.black54,
-                              ),
+                              style: TextStyle(fontSize: 11, color: _muted),
                             ),
                             const SizedBox(height: 3),
                             Text(
                               estimateAvailable
                                   ? _money.format(_monthEndPaceEstimate)
                                   : 'Not available yet',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 19,
                                 fontWeight: FontWeight.w900,
-                                color: _primary,
+                                color: _accent,
                               ),
                             ),
                             const SizedBox(height: 3),
-                            const Text(
+                            Text(
                               'This is an estimate based on your spending so far, not a guaranteed result or your remaining budget.',
                               style: TextStyle(
                                 fontSize: 10,
                                 height: 1.35,
-                                color: Colors.black54,
+                                color: _muted,
                               ),
                             ),
                           ],
@@ -1112,16 +1108,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.insights_outlined, size: 18, color: _primary),
+              Icon(Icons.insights_outlined, size: 18, color: _accent),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   _variabilityDescription,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.black87,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(fontSize: 11, color: _text, height: 1.4),
                 ),
               ),
             ],
@@ -1135,7 +1127,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1143,17 +1135,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         children: [
           Icon(icon, size: 18, color: _primary),
           const SizedBox(height: 7),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 10, color: Colors.black54),
-          ),
+          Text(label, style: TextStyle(fontSize: 10, color: _muted)),
           const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -1171,32 +1160,25 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFD),
+        color: _softSurface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFFECEAF3)),
+        border: Border.all(color: _border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 19),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 10, color: Colors.black54),
-          ),
+          Text(label, style: TextStyle(fontSize: 10, color: _muted)),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 4),
           Text(
             helper,
-            style: const TextStyle(
-              fontSize: 9,
-              color: Colors.black45,
-              height: 1.3,
-            ),
+            style: TextStyle(fontSize: 9, color: _subtle, height: 1.3),
           ),
         ],
       ),
@@ -1252,7 +1234,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                 title: share >= 7
                                     ? '${share.toStringAsFixed(0)}%'
                                     : '',
-                                titleStyle: const TextStyle(
+                                titleStyle: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 10,
@@ -1287,9 +1269,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                       entry.value['category'] as String,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 10,
-                                        color: Colors.black87,
+                                        color: _text,
                                       ),
                                     ),
                                   ),
@@ -1302,7 +1284,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ],
                   ),
                 ),
-                const Divider(height: 24),
+                Divider(height: 24, color: _border),
                 ...categories.asMap().entries.map((entry) {
                   final item = entry.value;
                   final category = item['category'] as String;
@@ -1318,7 +1300,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             Expanded(
                               child: Text(
                                 category,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -1326,7 +1308,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             ),
                             Text(
                               _money.format(amount),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,
                               ),
@@ -1339,7 +1321,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           child: LinearProgressIndicator(
                             value: share.clamp(0.0, 1.0),
                             minHeight: 7,
-                            backgroundColor: const Color(0xFFECEAF3),
+                            backgroundColor: _gridColor,
                             valueColor: AlwaysStoppedAnimation(
                               _categoryColor(entry.key),
                             ),
@@ -1351,17 +1333,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           children: [
                             Text(
                               '${(share * 100).toStringAsFixed(1)}% of spending',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.black54,
-                              ),
+                              style: TextStyle(fontSize: 10, color: _muted),
                             ),
                             Text(
                               '$count transaction${count == 1 ? '' : 's'}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.black54,
-                              ),
+                              style: TextStyle(fontSize: 10, color: _muted),
                             ),
                           ],
                         ),
@@ -1400,7 +1376,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       getTooltipItem: (group, groupIndex, rod, rodIndex) =>
                           BarTooltipItem(
                             '${_weekdayName(group.x + 1)}\n${_money.format(rod.toY)}',
-                            const TextStyle(
+                            TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
                               fontSize: 11,
@@ -1408,7 +1384,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           ),
                     ),
                   ),
-                  gridData: FlGridData(show: true, drawVerticalLine: false),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) =>
+                        FlLine(color: _gridColor, strokeWidth: 1),
+                  ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     topTitles: const AxisTitles(
@@ -1423,10 +1404,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         reservedSize: 48,
                         getTitlesWidget: (value, meta) => Text(
                           _compactMoney(value),
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: Colors.black54,
-                          ),
+                          style: TextStyle(fontSize: 9, color: _muted),
                         ),
                       ),
                     ),
@@ -1442,7 +1420,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
                               _weekdayName(day),
-                              style: const TextStyle(fontSize: 10),
+                              style: TextStyle(fontSize: 10),
                             ),
                           );
                         },
@@ -1500,7 +1478,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         height: 38,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: _categoryColor(entry.key).withOpacity(0.10),
+                          color: _categoryColor(
+                            entry.key,
+                          ).withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(11),
                         ),
                         child: Text(
@@ -1518,7 +1498,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           children: [
                             Text(
                               category,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
                               ),
@@ -1528,10 +1508,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                               date == null
                                   ? 'Date unavailable'
                                   : DateFormat('MMM d, yyyy').format(date),
-                              style: const TextStyle(
-                                color: Colors.black54,
-                                fontSize: 11,
-                              ),
+                              style: TextStyle(color: _muted, fontSize: 11),
                             ),
                           ],
                         ),
@@ -1539,7 +1516,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       const SizedBox(width: 8),
                       Text(
                         _money.format(_amount(item)),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
                         ),
@@ -1587,26 +1564,18 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF6F4FC),
+              color: _softPurple,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  color: _primary,
-                  size: 18,
-                ),
+                Icon(Icons.info_outline_rounded, color: _accent, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Difference between recorded budget amounts and expenses: ${_money.format(difference)}. This is a comparison of records created during the selected period, not necessarily the live remaining budget.',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      height: 1.4,
-                      color: Colors.black87,
-                    ),
+                    style: TextStyle(fontSize: 11, height: 1.4, color: _text),
                   ),
                 ),
               ],
@@ -1626,26 +1595,23 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFD),
+        color: _softSurface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFFECEAF3)),
+        border: Border.all(color: _border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 10),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 10, color: Colors.black54),
-          ),
+          Text(label, style: TextStyle(fontSize: 10, color: _muted)),
           const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
             ),
           ),
         ],
@@ -1657,11 +1623,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8E8),
+        color: _isDark ? const Color(0xFF302A20) : const Color(0xFFFFF8E8),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFFF4E5BD)),
+        border: Border.all(
+          color: _isDark ? const Color(0xFF55472D) : const Color(0xFFF4E5BD),
+        ),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
@@ -1693,25 +1661,21 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFECEAF3)),
+        border: Border.all(color: _border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.black54,
-              height: 1.4,
-            ),
+            style: TextStyle(fontSize: 11, color: _muted, height: 1.4),
           ),
           const SizedBox(height: 14),
           child,
@@ -1758,29 +1722,28 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final softSurface = isDark
+        ? const Color(0xFF2A2538)
+        : const Color(0xFFFAFAFD);
+    final subtle = isDark ? const Color(0xFF928BA8) : const Color(0xFF8B8798);
+    final muted = isDark ? const Color(0xFFB7B2C8) : const Color(0xFF6F6B82);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFD),
+        color: softSurface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.insert_chart_outlined_rounded,
-            size: 30,
-            color: Colors.black38,
-          ),
+          Icon(Icons.insert_chart_outlined_rounded, size: 30, color: subtle),
           const SizedBox(height: 8),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 12,
-              height: 1.4,
-            ),
+            style: TextStyle(color: muted, fontSize: 12, height: 1.4),
           ),
         ],
       ),

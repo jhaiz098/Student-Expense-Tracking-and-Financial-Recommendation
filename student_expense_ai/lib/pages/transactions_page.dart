@@ -270,9 +270,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
     );
 
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: _background,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
