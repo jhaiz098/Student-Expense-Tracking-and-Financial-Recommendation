@@ -40,7 +40,7 @@ class _HomePageState extends State<HomePage> {
   double monthlyExpenses = 0;
   String currentMonth = DateFormat('MMMM').format(DateTime.now());
   String firstName = '';
-
+  String? selectedTransactionType;
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
   Color get _background =>
@@ -118,7 +118,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> loadTransactions() async {
-    final data = await DatabaseHelper.instance.getRecentTransactions();
+    final data = await DatabaseHelper.instance.getRecentTransactions(
+      type: selectedTransactionType,
+    );
 
     if (!mounted) return;
 
@@ -164,6 +166,45 @@ class _HomePageState extends State<HomePage> {
     if (percentage >= budgetReminder) return _red;
     if (percentage >= budgetReminder - 20) return _orange;
     return _isDark ? const Color(0xFF54D6A4) : _green;
+  }
+
+  Widget _transactionFilterButton({
+    required String label,
+    required String type,
+    required IconData icon,
+  }) {
+    final isSelected = selectedTransactionType == type;
+
+    return OutlinedButton(
+      onPressed: () async {
+        final newType = isSelected ? null : type;
+
+        setState(() {
+          selectedTransactionType = newType;
+          recentTransactions = [];
+        });
+
+        await loadTransactions();
+      },
+      style: OutlinedButton.styleFrom(
+        backgroundColor: isSelected ? _primary : _cardColor,
+        foregroundColor: isSelected ? Colors.white : _textColor,
+        side: BorderSide(color: isSelected ? _primary : _borderColor),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -510,7 +551,39 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _transactionFilterButton(
+                    label: 'Expenses',
+                    type: 'Expense',
+                    icon: Icons.receipt_long_outlined,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _transactionFilterButton(
+                    label: 'Budgets',
+                    type: 'Budget',
+                    icon: Icons.account_balance_wallet_outlined,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            Center(
+              child: Text(
+                'Tap to filter by type. Tap again to show all transactions.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: _mutedColor),
+              ),
+            ),
+
+            const SizedBox(height: 10),
 
             // Recent Transactions heading
             Row(

@@ -34,9 +34,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Color get _muted =>
       _isDark ? const Color(0xFFB7B2C8) : const Color(0xFF6F6B82);
 
-  Color get _subtle =>
-      _isDark ? const Color(0xFF928BA8) : const Color(0xFF8B8798);
-
   Color get _surface =>
       _isDark ? const Color(0xFF2A2538) : const Color(0xFFFAFAFD);
 
@@ -47,8 +44,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   List<Map<String, dynamic>> transactions = [];
   DateTime selectedMonth = DateTime.now();
+
+  // Null means no filter is selected.
+  String? selectedTransactionType;
+
   bool hasChanged = false;
   bool isLoading = true;
+
+  final NumberFormat _currencyFormat = NumberFormat.currency(
+    locale: 'en_PH',
+    symbol: '₱',
+    decimalDigits: 2,
+  );
 
   @override
   void initState() {
@@ -216,6 +223,41 @@ class _TransactionsPageState extends State<TransactionsPage> {
     );
   }
 
+  Widget _transactionFilterButton({
+    required String label,
+    required String type,
+    required IconData icon,
+  }) {
+    final isSelected = selectedTransactionType == type;
+
+    return OutlinedButton(
+      onPressed: () {
+        setState(() {
+          // Tapping the selected filter again clears it.
+          selectedTransactionType = isSelected ? null : type;
+        });
+      },
+      style: OutlinedButton.styleFrom(
+        backgroundColor: isSelected ? _primary : _card,
+        foregroundColor: isSelected ? Colors.white : _text,
+        side: BorderSide(color: isSelected ? _primary : _border),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> deleteTransaction(Map<String, dynamic> transaction) async {
     if (transaction['type'] == 'Expense') {
       await DatabaseHelper.instance.deleteExpenses(transaction['id']);
@@ -224,21 +266,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
-  Map<String, List<Map<String, dynamic>>> groupTransactionsByDate() {
+  Map<String, List<Map<String, dynamic>>> groupTransactionsByDate(
+    List<Map<String, dynamic>> monthTransactions,
+  ) {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
 
-    final filteredTransactions = transactions.where((transaction) {
-      final date = DateTime.tryParse(
-        transaction['createdAt']?.toString() ?? '',
-      );
-
-      return date != null &&
-          date.year == selectedMonth.year &&
-          date.month == selectedMonth.month;
+    final filteredTransactions = monthTransactions.where((transaction) {
+      return selectedTransactionType == null ||
+          transaction['type'] == selectedTransactionType;
     }).toList();
 
     filteredTransactions.sort((a, b) {
@@ -250,7 +289,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
     });
 
     for (final transaction in filteredTransactions) {
-      final date = DateTime.parse(transaction['createdAt'].toString());
+      final date = DateTime.tryParse(
+        transaction['createdAt']?.toString() ?? '',
+      );
+
+      if (date == null) continue;
 
       final transactionDay = DateTime(date.year, date.month, date.day);
 
@@ -277,8 +320,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final groupedTransactions = groupTransactionsByDate();
-
+    // All records for the selected month. The monthly summary always
+    // represents the entire month, regardless of the history filter.
     final monthTransactions = transactions.where((transaction) {
       final date = DateTime.tryParse(
         transaction['createdAt']?.toString() ?? '',
@@ -289,6 +332,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
           date.month == selectedMonth.month;
     }).toList();
 
+    // Apply the optional type filter to the history only.
+    final filteredMonthTransactions = monthTransactions.where((transaction) {
+      return selectedTransactionType == null ||
+          transaction['type'] == selectedTransactionType;
+    }).toList();
+
+    final groupedTransactions = groupTransactionsByDate(monthTransactions);
+
     final totalExpenses = monthTransactions
         .where((transaction) => transaction['type'] == 'Expense')
         .fold<double>(
@@ -297,19 +348,13 @@ class _TransactionsPageState extends State<TransactionsPage> {
               sum + ((transaction['amount'] as num?)?.toDouble() ?? 0),
         );
 
-    final totalIncome = monthTransactions
-        .where((transaction) => transaction['type'] != 'Expense')
+    final totalBudgetRecords = monthTransactions
+        .where((transaction) => transaction['type'] == 'Budget')
         .fold<double>(
           0,
           (sum, transaction) =>
               sum + ((transaction['amount'] as num?)?.toDouble() ?? 0),
         );
-
-    final currencyFormat = NumberFormat.currency(
-      locale: 'en_PH',
-      symbol: '₱',
-      decimalDigits: 2,
-    );
 
     return Scaffold(
       backgroundColor: _background,
@@ -397,7 +442,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
                   const SizedBox(height: 18),
 
-                  // Monthly overview
+                  // Monthly summary
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
@@ -409,21 +454,22 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Monthly Overview',
+                          'Monthly Summary',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: _text,
                           ),
                         ),
+
                         const SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
                               child: _SummaryItem(
-                                icon: Icons.arrow_downward_rounded,
-                                label: 'Expenses',
-                                amount: currencyFormat.format(totalExpenses),
+                                icon: Icons.receipt_long_rounded,
+                                label: 'Total Expenses',
+                                amount: _currencyFormat.format(totalExpenses),
                                 color: _red,
                                 isDark: _isDark,
                               ),
@@ -431,9 +477,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _SummaryItem(
-                                icon: Icons.arrow_upward_rounded,
-                                label: 'Income',
-                                amount: currencyFormat.format(totalIncome),
+                                icon: Icons.account_balance_wallet_rounded,
+                                label: 'Total Budget',
+                                amount: _currencyFormat.format(
+                                  totalBudgetRecords,
+                                ),
                                 color: _green,
                                 isDark: _isDark,
                               ),
@@ -447,33 +495,84 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   const SizedBox(height: 24),
 
                   // Transaction history heading
+                  Text(
+                    'Transaction History',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: _text,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+                  Text(
+                    'View your records by type and date.',
+                    style: TextStyle(fontSize: 12, color: _muted),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Optional type filters
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _transactionFilterButton(
+                          label: 'Expenses',
+                          type: 'Expense',
+                          icon: Icons.receipt_long_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _transactionFilterButton(
+                          label: 'Budgets',
+                          type: 'Budget',
+                          icon: Icons.account_balance_wallet_outlined,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Tap to filter by type. Tap again to show all transactions.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.4,
+                        color: _muted,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
                   Row(
                     children: [
                       Expanded(
                         child: Text(
-                          'Transaction History',
+                          selectedTransactionType == null
+                              ? 'All Transactions'
+                              : selectedTransactionType == 'Expense'
+                              ? 'Expenses'
+                              : 'Budgets',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: _text,
                           ),
                         ),
                       ),
                       Text(
-                        '${monthTransactions.length} '
-                        '${monthTransactions.length == 1 ? 'transaction' : 'transactions'}',
+                        '${filteredMonthTransactions.length} '
+                        '${filteredMonthTransactions.length == 1 ? 'transaction' : 'transactions'}',
                         style: TextStyle(fontSize: 12, color: _muted),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 4),
-                  Text(
-                    'Your activity, organized by date',
-                    style: TextStyle(fontSize: 12, color: _muted),
-                  ),
-
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
                   if (groupedTransactions.isEmpty)
                     _buildEmptyState()
@@ -514,7 +613,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 category: transaction['category'] ?? 'Unknown',
                                 subtitle:
                                     transaction['note'] ?? 'No description',
-                                amount: currencyFormat.format(rawAmount),
+                                amount: _currencyFormat.format(rawAmount),
                                 isExpense: isExpense,
                                 onDelete: () async {
                                   await deleteTransaction(transaction);
@@ -568,6 +667,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Widget _buildEmptyState() {
+    final description = selectedTransactionType == null
+        ? 'There are no transactions for ${getCurrentMonthTitle()}.'
+        : 'There are no ${selectedTransactionType == 'Expense' ? 'expenses' : 'budget records'} '
+              'for ${getCurrentMonthTitle()}.';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
       decoration: BoxDecoration(
@@ -597,8 +701,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'There are no transactions for '
-            '${getCurrentMonthTitle()}.',
+            description,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, height: 1.5, color: _muted),
           ),

@@ -15,9 +15,6 @@ const Color _categoryMuted = Color(0xFF6F6B82);
 const Color _categoryDarkMuted = Color(0xFFB7B2C8);
 const Color _categoryRed = Color(0xFFE05252);
 
-const Color _categoryGreen = Color(0xFF159A75);
-const Color _categoryDarkGreen = Color(0xFF54D6A4);
-
 class ManageCategoriesPage extends StatefulWidget {
   const ManageCategoriesPage({super.key});
 
@@ -26,7 +23,8 @@ class ManageCategoriesPage extends StatefulWidget {
 }
 
 class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
-  String selectedType = "Expense";
+  static const String _categoryType = 'Expense';
+
   List<Category> categories = [];
   bool isLoading = true;
 
@@ -43,21 +41,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   Color get _muted => _isDark ? _categoryDarkMuted : _categoryMuted;
 
-  Color get _accent => _isDark ? _categoryDarkPurple : _categoryPurple;
-
-  Color get _softSurface =>
-      _isDark ? const Color(0xFF2A2538) : const Color(0xFFFAFAFD);
+  Color get _accent => _isDark ? const Color(0xFFFF777E) : _categoryRed;
 
   Color get _softPurple =>
       _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
-
-  Color get _typeColor {
-    if (selectedType == "Expense") {
-      return _isDark ? const Color(0xFFFF777E) : _categoryRed;
-    }
-
-    return _isDark ? _categoryDarkGreen : _categoryGreen;
-  }
 
   @override
   void initState() {
@@ -71,7 +58,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     setState(() => isLoading = true);
 
     try {
-      final data = await DatabaseHelper.instance.getCategories(selectedType);
+      final data = await DatabaseHelper.instance.getCategories(_categoryType);
 
       if (!mounted) return;
 
@@ -83,14 +70,14 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       if (!mounted) return;
 
       setState(() => isLoading = false);
-      _showMessage("Unable to load categories. Please try again.");
+      _showMessage('Unable to load categories. Please try again.');
     }
   }
 
   void _showMessage(String message) {
     if (!mounted) return;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dark = _isDark;
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -99,12 +86,12 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           content: Text(
             message,
             style: TextStyle(
-              color: isDark ? _categoryText : Colors.white,
+              color: dark ? _categoryText : Colors.white,
               fontWeight: FontWeight.w500,
             ),
           ),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: isDark ? Colors.white : _categoryPurple,
+          backgroundColor: dark ? Colors.white : _categoryPurple,
           elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
@@ -117,7 +104,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       builder: (_) => _CategoryEditorDialog(
         category: category,
         isDark: _isDark,
-        type: selectedType,
+        type: _categoryType,
         showIconPicker: showIconPicker,
       ),
     );
@@ -127,13 +114,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     try {
       if (category == null) {
         await DatabaseHelper.instance.insertCategory(
-          selectedType,
+          _categoryType,
           result.name,
           result.icon.codePoint,
         );
       } else {
         await DatabaseHelper.instance.updateCategory(
-          selectedType,
+          _categoryType,
           category.id,
           result.name,
           result.icon.codePoint,
@@ -146,16 +133,16 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
       _showMessage(
         category == null
-            ? "Category added successfully"
-            : "Category updated successfully",
+            ? 'Category added successfully'
+            : 'Category updated successfully',
       );
     } catch (e) {
-      _showMessage("Unable to save category. Please try again.");
+      _showMessage('Unable to save category. Please try again.');
     }
   }
 
   Future<IconData?> showIconPicker() async {
-    final icons = [
+    final icons = <IconData>[
       // Food and daily needs
       Icons.restaurant,
       Icons.local_cafe,
@@ -243,9 +230,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       context: context,
       builder: (pickerContext) {
         final dark = Theme.of(pickerContext).brightness == Brightness.dark;
-        final accent = selectedType == "Expense"
-            ? (dark ? const Color(0xFFFF777E) : _categoryRed)
-            : (dark ? _categoryDarkGreen : _categoryGreen);
+        final accent = dark ? const Color(0xFFFF777E) : _categoryRed;
         final textColor = dark ? _categoryDarkText : _categoryText;
         final cardColor = dark ? _categoryDarkCard : Colors.white;
 
@@ -258,7 +243,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             children: [
               Expanded(
                 child: Text(
-                  "Choose Icon",
+                  'Choose Icon',
                   style: TextStyle(
                     color: textColor,
                     fontWeight: FontWeight.w800,
@@ -267,7 +252,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 ),
               ),
               IconButton(
-                tooltip: "Close",
+                tooltip: 'Close',
                 onPressed: () => Navigator.pop(pickerContext),
                 icon: Icon(Icons.close_rounded, color: textColor),
               ),
@@ -305,9 +290,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   Future<void> deleteCategory(Category category) async {
     try {
-      final allCategories = selectedType == "Expense"
-          ? await DatabaseHelper.instance.getExpenseCategories()
-          : await DatabaseHelper.instance.getBudgetCategories();
+      final allCategories = await DatabaseHelper.instance
+          .getExpenseCategories();
 
       if (!mounted) return;
 
@@ -323,15 +307,15 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               title: Text(
-                "Cannot Delete Category",
+                'Cannot Delete Category',
                 style: TextStyle(
                   color: dark ? _categoryDarkText : _categoryText,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               content: Text(
-                "This is the only category available. "
-                "Add another category before deleting it.",
+                'This is the only category available. '
+                'Add another category before deleting it.',
                 style: TextStyle(
                   color: dark ? _categoryDarkMuted : _categoryMuted,
                 ),
@@ -340,7 +324,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
                   child: Text(
-                    "OK",
+                    'OK',
                     style: TextStyle(
                       color: dark ? _categoryDarkPurple : _categoryPurple,
                     ),
@@ -354,7 +338,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       }
 
       final transactionCount = await DatabaseHelper.instance
-          .getCategoryTransactionCount(selectedType, category.id);
+          .getCategoryTransactionCount(_categoryType, category.id);
 
       if (!mounted) return;
 
@@ -370,7 +354,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               title: Text(
-                "Delete Category?",
+                'Delete Category?',
                 style: TextStyle(
                   color: dark ? _categoryDarkText : _categoryText,
                   fontWeight: FontWeight.w800,
@@ -388,7 +372,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),
                   child: Text(
-                    "Cancel",
+                    'Cancel',
                     style: TextStyle(
                       color: dark ? _categoryDarkMuted : _categoryMuted,
                     ),
@@ -397,7 +381,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, true),
                   child: const Text(
-                    "Delete",
+                    'Delete',
                     style: TextStyle(color: _categoryRed),
                   ),
                 ),
@@ -408,7 +392,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
         if (confirm != true || !mounted) return;
 
-        await DatabaseHelper.instance.deleteCategory(selectedType, category.id);
+        await DatabaseHelper.instance.deleteCategory(
+          _categoryType,
+          category.id,
+        );
 
         if (!mounted) return;
 
@@ -430,7 +417,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           final dark = Theme.of(dialogContext).brightness == Brightness.dark;
           final textColor = dark ? _categoryDarkText : _categoryText;
           final mutedColor = dark ? _categoryDarkMuted : _categoryMuted;
-          final accent = dark ? _categoryDarkPurple : _categoryPurple;
+          final accent = dark ? const Color(0xFFFF777E) : _categoryRed;
           final cardColor = dark ? _categoryDarkCard : Colors.white;
           final borderColor = dark ? _categoryDarkBorder : _categoryBorder;
           final fieldColor = dark
@@ -478,9 +465,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                             const SizedBox(width: 9),
                             Expanded(
                               child: Text(
-                                "This category is used by "
-                                "$transactionCount transaction"
-                                "${transactionCount == 1 ? '' : 's'}.",
+                                'This category is used by '
+                                '$transactionCount transaction'
+                                '${transactionCount == 1 ? '' : 's'}.',
                                 style: TextStyle(
                                   color: textColor,
                                   fontSize: 13,
@@ -493,7 +480,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        "Move transactions to",
+                        'Move transactions to',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: textColor,
@@ -506,7 +493,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                         dropdownColor: cardColor,
                         style: TextStyle(color: textColor),
                         decoration: InputDecoration(
-                          hintText: "Select replacement category",
+                          hintText: 'Select replacement category',
                           hintStyle: TextStyle(color: mutedColor),
                           filled: true,
                           fillColor: fieldColor,
@@ -552,8 +539,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        "Your transactions will be preserved and "
-                        "reassigned to the selected category.",
+                        'Your transactions will be preserved and '
+                        'reassigned to the selected category.',
                         style: TextStyle(
                           fontSize: 12,
                           height: 1.4,
@@ -566,7 +553,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(dialogContext, false),
-                    child: Text("Cancel", style: TextStyle(color: mutedColor)),
+                    child: Text('Cancel', style: TextStyle(color: mutedColor)),
                   ),
                   ElevatedButton(
                     onPressed: selectedReplacement == null
@@ -581,7 +568,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                       disabledForegroundColor: mutedColor,
                       elevation: 0,
                     ),
-                    child: const Text("Delete Category"),
+                    child: const Text('Delete Category'),
                   ),
                 ],
               );
@@ -597,7 +584,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       final replacement = selectedReplacement!;
 
       await DatabaseHelper.instance.deleteCategoryAndMoveTransactions(
-        type: selectedType,
+        type: _categoryType,
         oldCategoryId: category.id,
         newCategoryId: replacement.id,
       );
@@ -613,53 +600,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         '"${replacement.name}".',
       );
     } catch (e) {
-      _showMessage("Unable to delete category. Please try again.");
+      _showMessage('Unable to delete category. Please try again.');
     }
-  }
-
-  Widget _typeSelector({required String type, required IconData icon}) {
-    final isSelected = selectedType == type;
-    final accent = isSelected ? _typeColor : _muted;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          if (selectedType == type) return;
-
-          setState(() {
-            selectedType = type;
-          });
-
-          loadCategories();
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          decoration: BoxDecoration(
-            color: isSelected ? accent : Colors.transparent,
-            borderRadius: BorderRadius.circular(11),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: isSelected ? Colors.white : _muted),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(
-                  type,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : _muted,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _categoryCard(Category category) {
@@ -682,10 +624,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             width: 45,
             height: 45,
             decoration: BoxDecoration(
-              color: _typeColor.withValues(alpha: _isDark ? 0.17 : 0.09),
+              color: _accent.withValues(alpha: _isDark ? 0.17 : 0.09),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(category.icon, color: _typeColor, size: 23),
+            child: Icon(category.icon, color: _accent, size: 23),
           ),
           title: Text(
             category.name,
@@ -698,7 +640,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              "$selectedType category",
+              'Expense category',
               style: TextStyle(color: _muted, fontSize: 11),
             ),
           ),
@@ -706,13 +648,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                tooltip: "Edit category",
+                tooltip: 'Edit category',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => showCategoryDialog(category: category),
                 icon: Icon(Icons.edit_outlined, color: _accent, size: 21),
               ),
               IconButton(
-                tooltip: "Delete category",
+                tooltip: 'Delete category',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => deleteCategory(category),
                 icon: const Icon(
@@ -735,7 +677,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "$selectedType Categories",
+            'Expense Categories',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -744,8 +686,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            "${categories.length} "
-            "${categories.length == 1 ? 'category' : 'categories'}",
+            '${categories.length} '
+            '${categories.length == 1 ? 'category' : 'categories'}',
             style: TextStyle(fontSize: 12, color: _muted),
           ),
         ],
@@ -771,7 +713,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         ),
         const SizedBox(height: 18),
         Text(
-          "No categories yet",
+          'No categories yet',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 18,
@@ -781,8 +723,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          "Add your first $selectedType category "
-          "to keep your records organized.",
+          'Add your first expense category '
+          'to keep your records organized.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, height: 1.5, color: _muted),
         ),
@@ -796,7 +738,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       backgroundColor: _background,
       appBar: AppBar(
         title: Text(
-          "Manage Categories",
+          'Manage Categories',
           style: TextStyle(color: _text, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
@@ -806,64 +748,33 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showCategoryDialog(),
-        backgroundColor: _typeColor,
+        backgroundColor: _accent,
         foregroundColor: Colors.white,
         elevation: 3,
         icon: const Icon(Icons.add_rounded),
         label: const Text(
-          "Add Category",
+          'Add Category',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: _card,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: _border),
-              ),
-              child: Row(
+      body: RefreshIndicator(
+        color: _accent,
+        onRefresh: loadCategories,
+        child: isLoading
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  _typeSelector(type: "Expense", icon: Icons.money_off_rounded),
-                  _typeSelector(
-                    type: "Budget",
-                    icon: Icons.account_balance_wallet_outlined,
-                  ),
+                  const SizedBox(height: 180),
+                  Center(child: CircularProgressIndicator(color: _accent)),
                 ],
+              )
+            : categories.isEmpty
+            ? _emptyState()
+            : ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
+                children: [_sectionHeader(), ...categories.map(_categoryCard)],
               ),
-            ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              color: _accent,
-              onRefresh: loadCategories,
-              child: isLoading
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        const SizedBox(height: 180),
-                        Center(
-                          child: CircularProgressIndicator(color: _accent),
-                        ),
-                      ],
-                    )
-                  : categories.isEmpty
-                  ? _emptyState()
-                  : ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
-                      children: [
-                        _sectionHeader(),
-                        ...categories.map(_categoryCard),
-                      ],
-                    ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -907,23 +818,20 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
 
   Color get _muted => _isDark ? _categoryDarkMuted : _categoryMuted;
 
-  Color get _accent {
-    if (widget.type == "Expense") {
-      return _isDark ? const Color(0xFFFF777E) : _categoryRed;
-    }
-
-    return _isDark ? _categoryDarkGreen : _categoryGreen;
-  }
+  Color get _accent => _isDark ? const Color(0xFFFF777E) : _categoryRed;
 
   Color get _field => _isDark ? const Color(0xFF2A2538) : _categoryBackground;
 
   Color get _border => _isDark ? _categoryDarkBorder : _categoryBorder;
 
+  Color get _softPurple =>
+      _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
+
   @override
   void initState() {
     super.initState();
 
-    _nameController = TextEditingController(text: widget.category?.name ?? "");
+    _nameController = TextEditingController(text: widget.category?.name ?? '');
 
     _selectedIcon = widget.category?.icon ?? Icons.category_rounded;
   }
@@ -961,7 +869,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
       backgroundColor: _card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       title: Text(
-        widget.category == null ? "Add Category" : "Edit Category",
+        widget.category == null ? 'Add Category' : 'Edit Category',
         style: TextStyle(
           color: _text,
           fontSize: 19,
@@ -976,7 +884,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "CATEGORY NAME",
+                'CATEGORY NAME',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
@@ -992,9 +900,9 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                 textCapitalization: TextCapitalization.words,
                 style: TextStyle(color: _text),
                 decoration: InputDecoration(
-                  hintText: "Enter category name",
+                  hintText: 'Enter category name',
                   hintStyle: TextStyle(color: _muted),
-                  counterText: "",
+                  counterText: '',
                   filled: true,
                   fillColor: _field,
                   prefixIcon: Icon(Icons.label_outline_rounded, color: _accent),
@@ -1012,14 +920,14 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                   ),
                 ),
                 validator: (value) {
-                  final name = value?.trim() ?? "";
+                  final name = value?.trim() ?? '';
 
                   if (name.isEmpty) {
-                    return "Please enter a category name";
+                    return 'Please enter a category name';
                   }
 
                   if (name.length > 30) {
-                    return "Name must be 30 characters or fewer";
+                    return 'Name must be 30 characters or fewer';
                   }
 
                   return null;
@@ -1027,7 +935,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
               ),
               const SizedBox(height: 20),
               Text(
-                "CATEGORY ICON",
+                'CATEGORY ICON',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
@@ -1061,7 +969,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "Selected icon",
+                      'Selected icon',
                       style: TextStyle(color: _muted, fontSize: 12),
                     ),
                     const SizedBox(height: 12),
@@ -1070,7 +978,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                       child: OutlinedButton.icon(
                         onPressed: _chooseIcon,
                         icon: const Icon(Icons.grid_view_rounded, size: 18),
-                        label: const Text("Choose Icon"),
+                        label: const Text('Choose Icon'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _accent,
                           side: BorderSide(color: _accent),
@@ -1091,7 +999,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text("Cancel", style: TextStyle(color: _muted)),
+          child: Text('Cancel', style: TextStyle(color: _muted)),
         ),
         ElevatedButton(
           onPressed: _save,
@@ -1105,14 +1013,11 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
             ),
           ),
           child: const Text(
-            "Save",
+            'Save',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
       ],
     );
   }
-
-  Color get _softPurple =>
-      _isDark ? const Color(0xFF302844) : const Color(0xFFF6F4FC);
 }

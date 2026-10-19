@@ -101,6 +101,9 @@ class _AddModalPageState extends State<AddModalPage> {
   List<Category> categories = [];
 
   bool isSaving = false;
+  bool isLoadingCategories = false;
+  bool categoriesLoaded = false;
+  Future<List<Category>>? _categoriesFuture;
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
@@ -153,11 +156,12 @@ class _AddModalPageState extends State<AddModalPage> {
       noteController.text = widget.transaction!['note']?.toString() ?? '';
     }
 
+    // Start loading categories immediately, even if Budget is selected.
     final data = await loadCategories();
 
     if (!mounted) return;
 
-    if (widget.transaction != null) {
+    if (selectedType == 'Expense' && widget.transaction != null) {
       final categoryId = widget.transaction!['categoryId'];
 
       Category? match;
@@ -176,17 +180,62 @@ class _AddModalPageState extends State<AddModalPage> {
   }
 
   Future<List<Category>> loadCategories() async {
-    final data = selectedType == 'Expense'
-        ? await DatabaseHelper.instance.getExpenseCategories()
-        : await DatabaseHelper.instance.getBudgetCategories();
+    // Return cached categories instead of querying the database again.
+    if (categoriesLoaded) {
+      return categories;
+    }
+
+    // Reuse the same pending request if categories are already loading.
+    if (_categoriesFuture != null) {
+      return _categoriesFuture!;
+    }
 
     if (mounted) {
       setState(() {
-        categories = data;
+        isLoadingCategories = true;
       });
     }
 
-    return data;
+    _categoriesFuture = DatabaseHelper.instance.getExpenseCategories();
+
+    try {
+      final data = await _categoriesFuture!;
+
+      if (mounted) {
+        setState(() {
+          categories = data;
+          categoriesLoaded = true;
+          isLoadingCategories = false;
+        });
+      }
+
+      return data;
+    } catch (e) {
+      debugPrint('Failed to load expense categories: $e');
+
+      _categoriesFuture = null;
+
+      if (mounted) {
+        setState(() {
+          isLoadingCategories = false;
+        });
+      }
+
+      return [];
+    }
+  }
+
+  Future<void> changeType(String type) async {
+    if (selectedType == type || isSaving) return;
+
+    setState(() {
+      selectedType = type;
+      selectedCategory = null;
+    });
+
+    if (type == 'Expense' && !categoriesLoaded) {
+      await loadCategories();
+    }
   }
 
   Future<bool> checkExcessSpending(double newAmount) async {
@@ -237,10 +286,12 @@ class _AddModalPageState extends State<AddModalPage> {
   Future<void> saveTransaction() async {
     if (isSaving) return;
 
-    if (amountController.text.isEmpty || selectedCategory == null) {
+    // A category is required for an expense, but not for a budget.
+    if (amountController.text.trim().isEmpty ||
+        (selectedType == 'Expense' && selectedCategory == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please complete all fields'),
+          content: Text('Please complete all required fields'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -396,17 +447,22 @@ class _AddModalPageState extends State<AddModalPage> {
         }
       }
 
-      final data = {
+      final createdAt = widget.transaction != null
+          ? widget.transaction!['createdAt']
+          : DateTime.now().toIso8601String();
+
+      final Map<String, dynamic> data = {
         'amount': amount,
-        'categoryId': selectedCategory!.id,
         'note': noteController.text.trim(),
-        'createdAt': widget.transaction != null
-            ? widget.transaction!['createdAt']
-            : DateTime.now().toIso8601String(),
+        'createdAt': createdAt,
       };
 
+      if (selectedType == 'Expense') {
+        data['categoryId'] = selectedCategory!.id;
+      }
+
       if (widget.transaction != null) {
-        final oldType = widget.transaction!['type'];
+        final oldType = widget.transaction!['type']?.toString() ?? 'Budget';
         final id = widget.transaction!['id'];
 
         if (oldType == selectedType) {
@@ -527,7 +583,7 @@ class _AddModalPageState extends State<AddModalPage> {
               ),
               const SizedBox(height: 14),
 
-              // Expense / Budget selector
+              // Keep both Expense and Budget flows.
               Row(
                 children: [
                   Expanded(
@@ -616,90 +672,104 @@ class _AddModalPageState extends State<AddModalPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
 
-              // Category heading
-              Row(
-                children: [
-                  _fieldLabel('Category'),
-                  const Spacer(),
-                  if (selectedCategory != null)
-                    Flexible(
-                      child: Text(
-                        selectedCategory!.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+              // Show categories only for Expense.
+              if (selectedType == 'Expense') ...[
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _fieldLabel('Category'),
+                    const Spacer(),
+                    if (selectedCategory != null)
+                      Flexible(
+                        child: Text(
+                          selectedCategory!.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _accent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                if (isLoadingCategories)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(15),
+                    decoration: _fieldDecoration(),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
                           color: _accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 10),
+                  )
+                else if (categories.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(15),
+                    decoration: _fieldDecoration(),
+                    child: Text(
+                      'No expense categories available',
+                      style: TextStyle(color: _muted, fontSize: 13),
+                    ),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: categories.map((category) {
+                      final selected = selectedCategory?.id == category.id;
 
-              if (categories.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(15),
-                  decoration: _fieldDecoration(),
-                  child: Text(
-                    'No categories available',
-                    style: TextStyle(color: _muted, fontSize: 13),
+                      return ChoiceChip(
+                        avatar: Icon(
+                          category.icon,
+                          size: 16,
+                          color: selected ? Colors.white : _expenseRed,
+                        ),
+                        label: Text(category.name),
+                        selected: selected,
+                        showCheckmark: false,
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? Colors.white : _text,
+                        ),
+                        selectedColor: _primaryPurple,
+                        backgroundColor: _card,
+                        side: BorderSide(
+                          color: selected ? _primaryPurple : _border,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        visualDensity: const VisualDensity(
+                          horizontal: -2,
+                          vertical: -2,
+                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        onSelected: (value) {
+                          setState(() {
+                            selectedCategory = value ? category : null;
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
-                )
-              else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: categories.map((category) {
-                    final selected = selectedCategory?.id == category.id;
-
-                    return ChoiceChip(
-                      avatar: Icon(
-                        category.icon,
-                        size: 16,
-                        color: selected
-                            ? Colors.white
-                            : selectedType == 'Expense'
-                            ? _expenseRed
-                            : _incomeGreen,
-                      ),
-                      label: Text(category.name),
-                      selected: selected,
-                      showCheckmark: false,
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? Colors.white : _text,
-                      ),
-                      selectedColor: _primaryPurple,
-                      backgroundColor: _card,
-                      side: BorderSide(
-                        color: selected ? _primaryPurple : _border,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      visualDensity: const VisualDensity(
-                        horizontal: -2,
-                        vertical: -2,
-                      ),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 3),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 2,
-                      ),
-                      onSelected: (value) {
-                        setState(() {
-                          selectedCategory = value ? category : null;
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
+              ],
 
               const SizedBox(height: 24),
 
@@ -781,17 +851,7 @@ class _AddModalPageState extends State<AddModalPage> {
       borderRadius: BorderRadius.circular(13),
       child: InkWell(
         borderRadius: BorderRadius.circular(13),
-        onTap: () {
-          if (selectedType == type) return;
-
-          setState(() {
-            selectedType = type;
-            selectedCategory = null;
-            categories = [];
-          });
-
-          loadCategories();
-        },
+        onTap: () => changeType(type),
         child: Container(
           height: 60,
           padding: const EdgeInsets.symmetric(horizontal: 10),

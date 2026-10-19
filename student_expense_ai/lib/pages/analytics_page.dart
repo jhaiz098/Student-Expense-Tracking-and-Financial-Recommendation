@@ -127,16 +127,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   String _expenseCategory(Map<String, dynamic> item) =>
       (item['category'] ?? item['categoryName'] ?? 'Others').toString();
 
-  String _budgetCategory(Map<String, dynamic> item) {
-    final name = item['category'];
-
-    if (name != null && name.toString().trim().isNotEmpty) {
-      return name.toString();
-    }
-
-    return 'Uncategorized';
-  }
-
   DateTime get _today {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
@@ -2260,20 +2250,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                 : Column(
                                     children: monthBudgets.map((item) {
                                       final date = _date(item);
-                                      final category = _budgetCategory(item);
-
-                                      final categoryIcon = IconData(
-                                        (item['categoryIcon'] as num?)
-                                                ?.toInt() ??
-                                            Icons.category.codePoint,
-                                        fontFamily: 'MaterialIcons',
-                                      );
 
                                       return _monthlyBudgetRow(
-                                        category: category,
+                                        category: 'Budget Record',
                                         date: date,
                                         amount: _amount(item),
-                                        icon: categoryIcon,
+                                        icon: Icons.savings_outlined,
                                       );
                                     }).toList(),
                                   ),

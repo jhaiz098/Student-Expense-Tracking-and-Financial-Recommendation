@@ -44,10 +44,8 @@ class DatabaseHelper {
       CREATE TABLE budgets(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         amount REAL NOT NULL,
-        categoryId INTEGER NOT NULL,
         note TEXT,
-        createdAt TEXT NOT NULL,
-        FOREIGN KEY(categoryId) REFERENCES budget_categories(id)
+        createdAt TEXT NOT NULL
       );
     ''');
 
@@ -439,20 +437,6 @@ class DatabaseHelper {
     }).toList();
   }
 
-  Future<List<Category>> getBudgetCategories() async {
-    final db = await database;
-
-    final result = await db.query('budget_categories');
-
-    return result.map((row) {
-      return Category(
-        id: row['id'] as int,
-        name: row['name'] as String,
-        icon: IconData(row['icon'] as int, fontFamily: 'MaterialIcons'),
-      );
-    }).toList();
-  }
-
   Future<int> insertExpense(Map<String, dynamic> expense) async {
     final db = await database;
     return await db.insert('expenses', expense);
@@ -484,20 +468,11 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getBudget() async {
     final db = await database;
 
-    return await db.rawQuery('''
-    SELECT
-      budgets.id,
-      budgets.amount,
-      budgets.categoryId,
-      budgets.note,
-      budgets.createdAt,
-      budget_categories.name AS category,
-      budget_categories.icon AS categoryIcon
-    FROM budgets
-    INNER JOIN budget_categories
-      ON budgets.categoryId = budget_categories.id
-    ORDER BY budgets.createdAt DESC
-  ''');
+    return await db.query(
+      'budgets',
+      columns: ['id', 'amount', 'createdAt'],
+      orderBy: 'createdAt DESC',
+    );
   }
 
   Future<int> deleteBudget(int id) async {
@@ -561,7 +536,7 @@ class DatabaseHelper {
     final db = await database;
 
     final expenses = await db.rawQuery('''
-    SELECT 
+    SELECT
       expenses.id,
       expenses.amount,
       expenses.note,
@@ -571,89 +546,91 @@ class DatabaseHelper {
       expense_categories.icon AS icon,
       'Expense' AS type
     FROM expenses
-
     INNER JOIN expense_categories
-    ON expenses.categoryId = expense_categories.id
+      ON expenses.categoryId = expense_categories.id
   ''');
 
     final budgets = await db.rawQuery('''
-    SELECT 
-      budgets.id,
-      budgets.amount,
-      budgets.note,
-      budgets.createdAt,
-      budgets.categoryId,
-      budget_categories.name AS category,
-      budget_categories.icon AS icon,
+    SELECT
+      id,
+      amount,
+      note,
+      createdAt,
+      NULL AS categoryId,
+      'Budget' AS category,
+      NULL AS icon,
       'Budget' AS type
     FROM budgets
-
-    INNER JOIN budget_categories
-    ON budgets.categoryId = budget_categories.id
   ''');
 
     final transactions = [...expenses, ...budgets];
 
     transactions.sort(
-      (a, b) => b["createdAt"].toString().compareTo(a["createdAt"].toString()),
+      (a, b) => b['createdAt'].toString().compareTo(a['createdAt'].toString()),
     );
 
     return transactions;
   }
 
-  Future<List<Map<String, dynamic>>> getRecentTransactions() async {
+  Future<List<Map<String, dynamic>>> getRecentTransactions({
+    String? type,
+  }) async {
     final db = await database;
-
     final now = DateTime.now();
 
     final startOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
-
     final endOfMonth = DateTime(now.year, now.month + 1, 1).toIso8601String();
 
-    final expenses = await db.rawQuery(
-      '''
-    SELECT 
-      expenses.id,
-      expenses.amount,
-      expenses.note,
-      expenses.createdAt,
-      expenses.categoryId,
-      expense_categories.name AS category,
-      expense_categories.icon AS icon,
-      'Expense' AS type
-    FROM expenses
-    INNER JOIN expense_categories
-    ON expenses.categoryId = expense_categories.id
-    WHERE expenses.createdAt >= ?
-    AND expenses.createdAt < ?
-    ''',
-      [startOfMonth, endOfMonth],
-    );
+    List<Map<String, dynamic>> transactions = [];
 
-    final budgets = await db.rawQuery(
-      '''
-    SELECT 
-      budgets.id,
-      budgets.amount,
-      budgets.note,
-      budgets.createdAt,
-      budgets.categoryId,
-      budget_categories.name AS category,
-      budget_categories.icon AS icon,
-      'Budget' AS type
-    FROM budgets
-    INNER JOIN budget_categories
-    ON budgets.categoryId = budget_categories.id
-    WHERE budgets.createdAt >= ?
-    AND budgets.createdAt < ?
+    if (type == null || type == 'Expense') {
+      final expenses = await db.rawQuery(
+        '''
+      SELECT
+        expenses.id,
+        expenses.amount,
+        expenses.note,
+        expenses.createdAt,
+        expenses.categoryId,
+        expense_categories.name AS category,
+        expense_categories.icon AS icon,
+        'Expense' AS type
+      FROM expenses
+      INNER JOIN expense_categories
+        ON expenses.categoryId = expense_categories.id
+      WHERE expenses.createdAt >= ?
+        AND expenses.createdAt < ?
     ''',
-      [startOfMonth, endOfMonth],
-    );
+        [startOfMonth, endOfMonth],
+      );
 
-    final transactions = [...expenses, ...budgets];
+      transactions.addAll(expenses);
+    }
+
+    if (type == null || type == 'Budget') {
+      final budgets = await db.rawQuery(
+        '''
+      SELECT
+        id,
+        amount,
+        note,
+        createdAt,
+        NULL AS categoryId,
+        'Budget' AS category,
+        NULL AS icon,
+        'Budget' AS type
+      FROM budgets
+      WHERE createdAt >= ?
+        AND createdAt < ?
+    ''',
+        [startOfMonth, endOfMonth],
+      );
+
+      transactions.addAll(budgets);
+    }
 
     transactions.sort(
-      (a, b) => b["createdAt"].toString().compareTo(a["createdAt"].toString()),
+      (a, b) => b['createdAt'].toString().compareTo(a['createdAt'].toString()),
     );
 
     return transactions.take(5).toList();
