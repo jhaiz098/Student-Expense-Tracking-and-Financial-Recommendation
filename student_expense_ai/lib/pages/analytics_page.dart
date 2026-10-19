@@ -303,15 +303,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return counts;
   }
 
-  Map<String, double> get _budgetCategoryTotals {
-    final totals = <String, double>{};
-
-    for (final item in _periodBudgets) {
-      final name = _budgetCategory(item);
-      totals[name] = (totals[name] ?? 0) + _amount(item);
-    }
-
-    return totals;
+  double get _totalBudgetAmount {
+    return _periodBudgets.fold<double>(
+      0,
+      (total, item) => total + _amount(item),
+    );
   }
 
   Map<String, double> get _dailyTotals {
