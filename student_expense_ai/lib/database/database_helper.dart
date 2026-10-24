@@ -23,8 +23,13 @@ class DatabaseHelper {
 
     return await openDatabase(
       join(dbPath, 'student_expense_ai.db'),
-      version: 1,
+      version: 2,
       onCreate: _createDatabase,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('DROP TABLE IF EXISTS budget_categories');
+        }
+      },
     );
   }
 
@@ -58,27 +63,16 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
-      CREATE TABLE budget_categories(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        icon INTEGER NOT NULL
-      );
-    ''');
-
-    await db.execute('''
       CREATE TABLE settings(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         theme TEXT NOT NULL,
-        budgetReminder INTEGER NOT NULL DEFAULT 80,
-        aiRecommendation INTEGER NOT NULL
+        budgetReminder INTEGER NOT NULL DEFAULT 80
       );
     ''');
+    // aiRecommendation INTEGER NOT NULL
 
-    await db.insert('settings', {
-      "theme": "System",
-      "budgetReminder": 80,
-      "aiRecommendation": 1,
-    });
+    await db.insert('settings', {"theme": "System", "budgetReminder": 80});
+    // "aiRecommendation": 1,
 
     await db.execute('''
       CREATE TABLE user_profile (
@@ -166,16 +160,16 @@ class DatabaseHelper {
   }
 
   Future<int> getCategoryTransactionCount(String type, int categoryId) async {
+    // Budget categories are no longer supported.
+    if (type != "Expense") return 0;
+
     final db = await database;
-
-    final table = type == "Expense" ? "expenses" : "budgets";
-
     final result = await db.rawQuery(
       '''
-    SELECT COUNT(*) as count
-    FROM $table
-    WHERE categoryId = ?
-    ''',
+      SELECT COUNT(*) as count
+      FROM expenses
+      WHERE categoryId = ?
+      ''',
       [categoryId],
     );
 
@@ -187,26 +181,21 @@ class DatabaseHelper {
     required int oldCategoryId,
     required int newCategoryId,
   }) async {
+    // This operation now applies only to expense categories.
+    if (type != "Expense") return;
+
     final db = await database;
 
     await db.transaction((txn) async {
-      final transactionTable = type == "Expense" ? "expenses" : "budgets";
-
-      final categoryTable = type == "Expense"
-          ? "expense_categories"
-          : "budget_categories";
-
-      // Move all transactions to the new category
       await txn.update(
-        transactionTable,
+        "expenses",
         {"categoryId": newCategoryId},
         where: "categoryId = ?",
         whereArgs: [oldCategoryId],
       );
 
-      // Delete the old category
       await txn.delete(
-        categoryTable,
+        "expense_categories",
         where: "id = ?",
         whereArgs: [oldCategoryId],
       );
@@ -214,13 +203,11 @@ class DatabaseHelper {
   }
 
   Future<List<Category>> getCategories(String type) async {
+    // Return no categories for the removed budget-category feature.
+    if (type != "Expense") return [];
+
     final db = await database;
-
-    final table = type == "Expense"
-        ? "expense_categories"
-        : "budget_categories";
-
-    final result = await db.query(table);
+    final result = await db.query("expense_categories");
 
     return result.map((row) {
       return Category(
@@ -232,13 +219,10 @@ class DatabaseHelper {
   }
 
   Future<void> insertCategory(String type, String name, int icon) async {
+    if (type != "Expense") return;
+
     final db = await database;
-
-    final table = type == "Expense"
-        ? "expense_categories"
-        : "budget_categories";
-
-    await db.insert(table, {"name": name, "icon": icon});
+    await db.insert("expense_categories", {"name": name, "icon": icon});
   }
 
   Future<void> updateCategory(
@@ -247,14 +231,11 @@ class DatabaseHelper {
     String name,
     int icon,
   ) async {
+    if (type != "Expense") return;
+
     final db = await database;
-
-    final table = type == "Expense"
-        ? "expense_categories"
-        : "budget_categories";
-
     await db.update(
-      table,
+      "expense_categories",
       {"name": name, "icon": icon},
       where: "id = ?",
       whereArgs: [id],
@@ -266,12 +247,11 @@ class DatabaseHelper {
     int oldCategoryId,
     int newCategoryId,
   ) async {
+    if (type != "Expense") return;
+
     final db = await database;
-
-    final table = type == "Expense" ? "expenses" : "budgets";
-
     await db.update(
-      table,
+      "expenses",
       {"categoryId": newCategoryId},
       where: "categoryId = ?",
       whereArgs: [oldCategoryId],
@@ -279,13 +259,10 @@ class DatabaseHelper {
   }
 
   Future<void> deleteCategory(String type, int id) async {
+    if (type != "Expense") return;
+
     final db = await database;
-
-    final table = type == "Expense"
-        ? "expense_categories"
-        : "budget_categories";
-
-    await db.delete(table, where: "id = ?", whereArgs: [id]);
+    await db.delete("expense_categories", where: "id = ?", whereArgs: [id]);
   }
 
   Future<void> clearAllData() async {

@@ -238,31 +238,15 @@ class _AdvisorPageState extends State<AdvisorPage> {
 
   Future<void> checkInternet() async {
     try {
-      final connectivity = await Connectivity().checkConnectivity();
-
-      if (connectivity.contains(ConnectivityResult.none)) {
-        if (!mounted) return;
-        setState(() => hasInternet = false);
-        return;
-      }
-
-      final response = await http
-          .get(Uri.parse('https://www.google.com'))
-          .timeout(const Duration(seconds: 5));
+      await AIService.testConnection();
 
       if (!mounted) return;
-
-      setState(() {
-        hasInternet = response.statusCode == 200;
-      });
+      setState(() => hasInternet = true);
     } catch (e) {
-      debugPrint('Internet check failed: $e');
+      debugPrint('AI backend connection failed: $e');
 
       if (!mounted) return;
-
-      setState(() {
-        hasInternet = false;
-      });
+      setState(() => hasInternet = false);
     }
   }
 
