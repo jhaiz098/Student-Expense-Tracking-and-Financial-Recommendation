@@ -30,7 +30,7 @@ class _HomePageState extends State<HomePage> {
 
   final NumberFormat _money = NumberFormat.currency(
     locale: 'en_PH',
-    symbol: '₱',
+    symbol: '\u20B1',
     decimalDigits: 2,
   );
 
@@ -882,19 +882,64 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _deleteTransaction(Map<String, dynamic> transaction) async {
-    final id = transaction['id'];
+    final int id = transaction['id'] as int;
     final type = transaction['type'];
 
+    if (type == 'Budget') {
+      final hasExpenses = await DatabaseHelper.instance.hasExpenses();
+
+      if (!mounted) return;
+
+      if (hasExpenses) {
+        await showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            backgroundColor: _isDark ? const Color(0xFF211D2D) : Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(color: _borderColor),
+            ),
+            title: Text(
+              'Cannot Delete Budget',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _textColor,
+              ),
+            ),
+            content: Text(
+              'This budget cannot be deleted because expense records exist. '
+              'Please remove the expense records first.',
+              style: TextStyle(color: _mutedColor, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('OK', style: TextStyle(color: _mutedColor)),
+              ),
+            ],
+          ),
+        );
+
+        return;
+      }
+    }
+
+    int deletedRows;
+
     if (type == 'Expense') {
-      await DatabaseHelper.instance.deleteExpenses(id);
+      deletedRows = await DatabaseHelper.instance.deleteExpenses(id);
     } else {
-      await DatabaseHelper.instance.deleteBudget(id);
+      deletedRows = await DatabaseHelper.instance.deleteBudget(id);
     }
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Transaction deleted')));
+    if (deletedRows > 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Transaction deleted')));
+    }
   }
 }

@@ -258,12 +258,55 @@ class _TransactionsPageState extends State<TransactionsPage> {
     );
   }
 
-  Future<void> deleteTransaction(Map<String, dynamic> transaction) async {
-    if (transaction['type'] == 'Expense') {
-      await DatabaseHelper.instance.deleteExpenses(transaction['id']);
-    } else {
-      await DatabaseHelper.instance.deleteBudget(transaction['id']);
+  Future<bool> deleteTransaction(Map<String, dynamic> transaction) async {
+    final int id = transaction['id'] as int;
+
+    if (transaction['type'] == 'Budget') {
+      final hasExpenses = await DatabaseHelper.instance.hasExpenses();
+
+      if (!mounted) return false;
+
+      if (hasExpenses) {
+        await showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            backgroundColor: _isDark ? const Color(0xFF211D2D) : Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(color: _border),
+            ),
+            title: Text(
+              'Cannot Delete Budget',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _text,
+              ),
+            ),
+            content: Text(
+              'This budget cannot be deleted because expense records exist. '
+              'Please remove the expense records first.',
+              style: TextStyle(color: _muted, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('OK', style: TextStyle(color: _muted)),
+              ),
+            ],
+          ),
+        );
+
+        return false;
+      }
     }
+
+    final deletedRows = transaction['type'] == 'Expense'
+        ? await DatabaseHelper.instance.deleteExpenses(id)
+        : await DatabaseHelper.instance.deleteBudget(id);
+
+    return deletedRows > 0;
   }
 
   Map<String, List<Map<String, dynamic>>> groupTransactionsByDate(
@@ -616,15 +659,25 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 amount: _currencyFormat.format(rawAmount),
                                 isExpense: isExpense,
                                 onDelete: () async {
-                                  await deleteTransaction(transaction);
+                                  final deleted = await deleteTransaction(
+                                    transaction,
+                                  );
 
-                                  if (!mounted) return;
+                                  if (!mounted || !deleted) return;
 
                                   setState(() {
                                     hasChanged = true;
                                   });
 
                                   await loadTransactions();
+
+                                  if (!mounted) return;
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Transaction deleted'),
+                                    ),
+                                  );
                                 },
                                 onEdit: () async {
                                   final result = await showAddModal(

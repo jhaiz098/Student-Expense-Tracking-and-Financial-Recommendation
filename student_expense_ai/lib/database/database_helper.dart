@@ -404,6 +404,14 @@ class DatabaseHelper {
     return await db.query('expenses', orderBy: 'createdAt DESC');
   }
 
+  Future<bool> hasExpenses() async {
+    final db = await database;
+
+    final result = await db.rawQuery('SELECT COUNT(*) AS count FROM expenses');
+
+    return (Sqflite.firstIntValue(result) ?? 0) > 0;
+  }
+
   Future<int> deleteExpenses(int id) async {
     final db = await database;
 

@@ -41,7 +41,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   final NumberFormat _money = NumberFormat.currency(
     locale: 'en_PH',
-    symbol: '₱',
+    symbol: '\u20B1',
     decimalDigits: 2,
   );
 
