@@ -23,11 +23,16 @@ class DatabaseHelper {
 
     return await openDatabase(
       join(dbPath, 'student_expense_ai.db'),
-      version: 2,
+      version: 3,
       onCreate: _createDatabase,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute('DROP TABLE IF EXISTS budget_categories');
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            "ALTER TABLE user_profile ADD COLUMN homePeriod TEXT NOT NULL DEFAULT 'Monthly'",
+          );
         }
       },
     );
@@ -87,7 +92,8 @@ class DatabaseHelper {
         schoolAddress TEXT,
         workplace TEXT,
         workplaceAddress TEXT,
-        position TEXT
+        position TEXT,
+        homePeriod TEXT NOT NULL DEFAULT 'Monthly'
       )
     ''');
 
@@ -147,9 +153,24 @@ class DatabaseHelper {
   Future<void> saveUserProfile(Map<String, dynamic> data) async {
     final db = await database;
 
+    // Preserve the saved Home period when the profile is replaced/updated.
+    final existingProfile = await db.query(
+      'user_profile',
+      columns: ['homePeriod'],
+      where: 'id = ?',
+      whereArgs: [1],
+      limit: 1,
+    );
+    final savedHomePeriod =
+        data['homePeriod'] ??
+        (existingProfile.isNotEmpty
+            ? existingProfile.first['homePeriod']
+            : 'Monthly');
+
     await db.insert('user_profile', {
       'id': 1,
       ...data,
+      'homePeriod': savedHomePeriod,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
@@ -157,6 +178,40 @@ class DatabaseHelper {
     final db = await database;
 
     await db.update('user_profile', data, where: 'id = ?', whereArgs: [1]);
+  }
+
+  // Returns the user's preferred Home summary period.
+  // Defaults to Monthly when no profile preference has been saved.
+  Future<String> getHomePeriod() async {
+    final db = await database;
+
+    final result = await db.query(
+      'user_profile',
+      columns: ['homePeriod'],
+      where: 'id = ?',
+      whereArgs: [1],
+      limit: 1,
+    );
+
+    if (result.isEmpty) return 'Monthly';
+
+    final period = result.first['homePeriod']?.toString() ?? 'Monthly';
+    return ['Daily', 'Weekly', 'Monthly'].contains(period) ? period : 'Monthly';
+  }
+
+  // Saves the user's preferred Home summary period in their profile.
+  Future<void> updateHomePeriod(String period) async {
+    if (!['Daily', 'Weekly', 'Monthly'].contains(period)) {
+      throw ArgumentError.value(period, 'period', 'Invalid Home period');
+    }
+
+    final db = await database;
+    await db.update(
+      'user_profile',
+      {'homePeriod': period},
+      where: 'id = ?',
+      whereArgs: [1],
+    );
   }
 
   Future<int> getCategoryTransactionCount(String type, int categoryId) async {

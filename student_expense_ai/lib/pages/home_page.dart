@@ -36,9 +36,9 @@ class _HomePageState extends State<HomePage> {
 
   int budgetReminder = 80;
   List<Map<String, dynamic>> recentTransactions = [];
-  double monthlyBudget = 0;
-  double monthlyExpenses = 0;
-  String currentMonth = DateFormat('MMMM').format(DateTime.now());
+  double periodBudget = 0;
+  double periodExpenses = 0;
+  String selectedPeriod = 'Monthly';
   String firstName = '';
   String? selectedTransactionType;
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
@@ -72,48 +72,101 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     loadProfile();
-    loadBudget();
-    loadExpenses();
     loadTransactions();
   }
 
   Future<void> refresh() async {
-    await Future.wait([loadBudget(), loadExpenses(), loadTransactions()]);
+    await Future.wait([loadSummary(), loadTransactions()]);
   }
 
   Future<void> loadProfile() async {
-    final profile = await DatabaseHelper.instance.getUserProfile();
+    final results = await Future.wait([
+      DatabaseHelper.instance.getUserProfile(),
+      DatabaseHelper.instance.getHomePeriod(),
+    ]);
+    final profile = results[0] as Map<String, dynamic>?;
+    final savedPeriod = results[1] as String;
 
     if (!mounted) return;
 
     setState(() {
       firstName = profile?['firstName'] ?? '';
+      selectedPeriod = savedPeriod;
     });
+
+    await loadSummary();
   }
 
-  Future<void> loadExpenses() async {
-    final expenses = await DatabaseHelper.instance.getExpenses();
-    final now = DateTime.now();
+  DateTime _periodStart(DateTime now) {
+    switch (selectedPeriod) {
+      case 'Daily':
+        return DateTime(now.year, now.month, now.day);
+      case 'Weekly':
+        final today = DateTime(now.year, now.month, now.day);
+        return today.subtract(Duration(days: today.weekday - 1));
+      default:
+        return DateTime(now.year, now.month, 1);
+    }
+  }
 
-    double total = 0;
+  DateTime _periodEnd(DateTime now) {
+    switch (selectedPeriod) {
+      case 'Daily':
+        return _periodStart(now).add(const Duration(days: 1));
+      case 'Weekly':
+        return _periodStart(now).add(const Duration(days: 7));
+      default:
+        return DateTime(now.year, now.month + 1, 1);
+    }
+  }
+
+  String get _periodDescription {
+    switch (selectedPeriod) {
+      case 'Daily':
+        return 'today';
+      case 'Weekly':
+        return 'this week';
+      default:
+        return 'this month';
+    }
+  }
+
+  Future<void> loadSummary() async {
+    final results = await Future.wait([
+      DatabaseHelper.instance.getExpenses(),
+      DatabaseHelper.instance.getBudget(),
+      DatabaseHelper.instance.getBudgetReminder(),
+    ]);
+
+    final now = DateTime.now();
+    final start = _periodStart(now);
+    final end = _periodEnd(now);
+    final expenses = results[0] as List<Map<String, dynamic>>;
+    final budgets = results[1] as List<Map<String, dynamic>>;
+
+    double expenseTotal = 0;
+    double budgetTotal = 0;
 
     for (final expense in expenses) {
-      final rawDate = expense['createdAt'];
-      if (rawDate == null) continue;
+      final date = DateTime.tryParse(expense['createdAt']?.toString() ?? '');
+      if (date != null && !date.isBefore(start) && date.isBefore(end)) {
+        expenseTotal += (expense['amount'] as num?)?.toDouble() ?? 0;
+      }
+    }
 
-      final date = DateTime.tryParse(rawDate.toString());
-      if (date == null) continue;
-
-      if (date.month == now.month && date.year == now.year) {
-        total += (expense['amount'] as num?)?.toDouble() ?? 0;
+    for (final budget in budgets) {
+      final date = DateTime.tryParse(budget['createdAt']?.toString() ?? '');
+      if (date != null && !date.isBefore(start) && date.isBefore(end)) {
+        budgetTotal += (budget['amount'] as num?)?.toDouble() ?? 0;
       }
     }
 
     if (!mounted) return;
 
     setState(() {
-      monthlyExpenses = total;
-      currentMonth = DateFormat('MMMM').format(now);
+      periodExpenses = expenseTotal;
+      periodBudget = budgetTotal;
+      budgetReminder = results[2] as int;
     });
   }
 
@@ -129,35 +182,81 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> loadBudget() async {
-    final results = await Future.wait([
-      DatabaseHelper.instance.getCurrentMonthBudget(),
-      DatabaseHelper.instance.getBudgetReminder(),
-    ]);
-
-    if (!mounted) return;
+  Future<void> _changePeriod(String value) async {
+    if (value == selectedPeriod) return;
 
     setState(() {
-      monthlyBudget = (results[0] as num).toDouble();
-      budgetReminder = results[1] as int;
+      selectedPeriod = value;
     });
+
+    await DatabaseHelper.instance.updateHomePeriod(value);
+    await loadSummary();
+  }
+
+  Widget _periodSelector() {
+    const periods = ['Daily', 'Weekly', 'Monthly'];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: periods.map((period) {
+          final isSelected = selectedPeriod == period;
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Material(
+                color: isSelected
+                    ? Colors.white.withValues(alpha: 0.23)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => _changePeriod(period),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    child: Center(
+                      child: Text(
+                        period,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 
   double getBudgetPercentage() {
-    if (monthlyBudget <= 0) return 0;
-    return monthlyExpenses / monthlyBudget * 100;
+    if (periodBudget <= 0) return 0;
+    return periodExpenses / periodBudget * 100;
   }
 
   double getRemainingBudget() {
-    return (monthlyBudget - monthlyExpenses)
+    return (periodBudget - periodExpenses)
         .clamp(0.0, double.infinity)
         .toDouble();
   }
 
   double getExcessSpending() {
-    if (monthlyBudget <= 0) return 0;
+    if (periodBudget <= 0) return 0;
 
-    return (monthlyExpenses - monthlyBudget)
+    return (periodExpenses - periodBudget)
         .clamp(0.0, double.infinity)
         .toDouble();
   }
@@ -209,14 +308,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final budgetUsage = monthlyBudget <= 0
-        ? 0.0
-        : monthlyExpenses / monthlyBudget;
+    final budgetUsage = periodBudget <= 0 ? 0.0 : periodExpenses / periodBudget;
 
     final budgetPercentage = (budgetUsage * 100).floor().clamp(0, 100);
 
     final isOverBudget = getExcessSpending() > 0;
-    final hasBudget = monthlyBudget > 0;
+    final hasBudget = periodBudget > 0;
 
     return Scaffold(
       backgroundColor: _background,
@@ -250,7 +347,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 5),
             Text(
-              "Here's your financial overview for this month.",
+              "Here's your financial overview for $_periodDescription.",
               style: TextStyle(fontSize: 13, color: _mutedColor, height: 1.4),
             ),
             const SizedBox(height: 20),
@@ -258,9 +355,9 @@ class _HomePageState extends State<HomePage> {
             // Monthly Budget
             Showcase(
               key: widget.budgetKey,
-              title: 'Monthly Budget',
+              title: 'Budget Summary',
               description:
-                  'This shows your monthly budget, total spending, and remaining amount.',
+                  'This shows your budget, total spending, and remaining amount for the selected period.',
               targetBorderRadius: BorderRadius.circular(22),
               overlayColor: Colors.black,
               overlayOpacity: 0.65,
@@ -314,6 +411,8 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _periodSelector(),
+                    const SizedBox(height: 18),
                     Row(
                       children: [
                         const Expanded(
@@ -353,7 +452,7 @@ class _HomePageState extends State<HomePage> {
                                 isOverBudget
                                     ? 'Over budget'
                                     : hasBudget
-                                    ? 'Monthly budget'
+                                    ? '$selectedPeriod budget'
                                     : 'No budget set',
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -401,15 +500,15 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         Expanded(
                           child: _budgetValue(
-                            '$currentMonth budget',
-                            _money.format(monthlyBudget),
+                            '$selectedPeriod budget',
+                            _money.format(periodBudget),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _budgetValue(
                             'Spent so far',
-                            _money.format(monthlyExpenses),
+                            _money.format(periodExpenses),
                             alignRight: true,
                           ),
                         ),
@@ -427,7 +526,7 @@ class _HomePageState extends State<HomePage> {
               key: widget.budgetUsageKey,
               title: 'Budget Usage',
               description:
-                  'Monitor how much of your monthly budget you have already used.',
+                  'Monitor how much of your budget you have used during the selected period.',
               targetBorderRadius: BorderRadius.circular(18),
               overlayColor: Colors.black,
               overlayOpacity: 0.65,
@@ -484,7 +583,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         Flexible(
                           child: Text(
-                            '${_money.format(monthlyExpenses)} / ${_money.format(monthlyBudget)}',
+                            '${_money.format(periodExpenses)} / ${_money.format(periodBudget)}',
                             textAlign: TextAlign.right,
                             style: TextStyle(
                               fontSize: 11,
@@ -512,10 +611,10 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 9),
                     Text(
                       !hasBudget
-                          ? 'Set a monthly budget to start tracking your usage.'
+                          ? 'Add a budget for this period to start tracking your usage.'
                           : isOverBudget
                           ? 'You have exceeded your budget by ${_money.format(getExcessSpending())}.'
-                          : '${_money.format(getRemainingBudget())} remaining in your monthly budget.',
+                          : '${_money.format(getRemainingBudget())} remaining in your $selectedPeriod budget.',
                       style: TextStyle(
                         fontSize: 11,
                         height: 1.4,
@@ -533,7 +632,7 @@ class _HomePageState extends State<HomePage> {
                         icon: Icons.warning_amber_rounded,
                         title: 'Budget Warning',
                         message:
-                            'You have used ${getBudgetPercentage().toStringAsFixed(0)}% of your monthly budget.',
+                            'You have used ${getBudgetPercentage().toStringAsFixed(0)}% of your $selectedPeriod budget.',
                         color: _orange,
                       ),
                     ],
@@ -542,7 +641,8 @@ class _HomePageState extends State<HomePage> {
                       _notice(
                         icon: Icons.error_outline_rounded,
                         title: 'Excess Spending',
-                        message: 'Your expenses are above your monthly budget.',
+                        message:
+                            'Your expenses are above your $selectedPeriod budget.',
                         color: _red,
                       ),
                     ],

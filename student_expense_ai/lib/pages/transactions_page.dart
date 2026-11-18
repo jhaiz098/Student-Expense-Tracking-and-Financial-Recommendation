@@ -47,6 +47,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   // Null means no filter is selected.
   String? selectedTransactionType;
+  String searchQuery = '';
 
   bool hasChanged = false;
   bool isLoading = true;
@@ -201,6 +202,77 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
+  bool _matchesSearch(Map<String, dynamic> transaction) {
+    final query = searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return true;
+
+    final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
+    final date = DateTime.tryParse(transaction['createdAt']?.toString() ?? '');
+    final searchableValues = [
+      transaction['category']?.toString() ?? '',
+      transaction['note']?.toString() ?? '',
+      transaction['type']?.toString() ?? '',
+      amount.toString(),
+      amount.toStringAsFixed(2),
+      _currencyFormat.format(amount),
+      date == null ? '' : DateFormat('MMMM d, yyyy').format(date),
+      date == null ? '' : DateFormat('MMM d, yyyy').format(date),
+    ];
+
+    return searchableValues.any((value) => value.toLowerCase().contains(query));
+  }
+
+  Widget _searchField() {
+    return TextField(
+      onChanged: (value) {
+        setState(() {
+          searchQuery = value;
+        });
+      },
+      style: TextStyle(color: _text, fontSize: 14),
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        labelText: 'Search transactions',
+        hintText: 'Category, note, amount, or date',
+        labelStyle: TextStyle(color: _muted),
+        hintStyle: TextStyle(
+          color: _muted.withValues(alpha: 0.8),
+          fontSize: 12,
+        ),
+        prefixIcon: Icon(Icons.search_rounded, color: _accent),
+        suffixIcon: searchQuery.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Clear search',
+                icon: Icon(Icons.close_rounded, color: _muted),
+                onPressed: () {
+                  setState(() {
+                    searchQuery = '';
+                  });
+                },
+              ),
+        filled: true,
+        fillColor: _card,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _accent, width: 1.5),
+        ),
+      ),
+    );
+  }
+
   InputDecoration _dropdownDecoration(String label) {
     return InputDecoration(
       labelText: label,
@@ -319,8 +391,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final yesterday = today.subtract(const Duration(days: 1));
 
     final filteredTransactions = monthTransactions.where((transaction) {
-      return selectedTransactionType == null ||
+      final matchesType =
+          selectedTransactionType == null ||
           transaction['type'] == selectedTransactionType;
+      return matchesType && _matchesSearch(transaction);
     }).toList();
 
     filteredTransactions.sort((a, b) {
@@ -377,8 +451,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
     // Apply the optional type filter to the history only.
     final filteredMonthTransactions = monthTransactions.where((transaction) {
-      return selectedTransactionType == null ||
+      final matchesType =
+          selectedTransactionType == null ||
           transaction['type'] == selectedTransactionType;
+      return matchesType && _matchesSearch(transaction);
     }).toList();
 
     final groupedTransactions = groupTransactionsByDate(monthTransactions);
@@ -549,9 +625,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
                   const SizedBox(height: 4),
                   Text(
-                    'View your records by type and date.',
+                    'Search your records or filter them by type and date.',
                     style: TextStyle(fontSize: 12, color: _muted),
                   ),
+
+                  const SizedBox(height: 14),
+
+                  // Search transactions
+                  _searchField(),
 
                   const SizedBox(height: 14),
 
@@ -720,7 +801,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Widget _buildEmptyState() {
-    final description = selectedTransactionType == null
+    final description = searchQuery.trim().isNotEmpty
+        ? 'No transactions match “${searchQuery.trim()}”. Try another search.'
+        : selectedTransactionType == null
         ? 'There are no transactions for ${getCurrentMonthTitle()}.'
         : 'There are no ${selectedTransactionType == 'Expense' ? 'expenses' : 'budget records'} '
               'for ${getCurrentMonthTitle()}.';

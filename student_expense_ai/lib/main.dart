@@ -29,6 +29,7 @@ class StudentExpenseAI extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFFECEAF3),
             ),
+            fontFamily: 'NotoSans',
           ),
 
           darkTheme: ThemeData.dark(),
