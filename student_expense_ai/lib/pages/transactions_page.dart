@@ -43,11 +43,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Color get _accent => _isDark ? _darkPrimary : _primary;
 
   List<Map<String, dynamic>> transactions = [];
-  DateTime selectedMonth = DateTime.now();
+  DateTimeRange? selectedDateRange;
 
   // Null means no filter is selected.
   String? selectedTransactionType;
   String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   bool hasChanged = false;
   bool isLoading = true;
@@ -62,6 +63,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
   void initState() {
     super.initState();
     loadTransactions();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> loadTransactions() async {
@@ -91,139 +98,73 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
-  Future<void> selectMonthYear() async {
-    int selectedYear = selectedMonth.year;
-    int selectedMonthNumber = selectedMonth.month;
-    final currentYear = DateTime.now().year;
+  Future<void> selectDateRange() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final currentRange =
+        selectedDateRange ??
+        DateTimeRange(start: DateTime(now.year, now.month, 1), end: today);
 
-    final result = await showDialog<DateTime>(
+    final result = await showDateRangePicker(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: _card,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: _border),
-              ),
-              title: Text(
-                'Select Month',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: _text,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<int>(
-                    value: selectedYear,
-                    dropdownColor: _card,
-                    style: TextStyle(color: _text),
-                    decoration: _dropdownDecoration('Year'),
-                    items: List.generate(currentYear - 1999, (index) {
-                      final year = currentYear - index;
-
-                      return DropdownMenuItem(
-                        value: year,
-                        child: Text(year.toString()),
-                      );
-                    }),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() {
-                          selectedYear = value;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    value: selectedMonthNumber,
-                    dropdownColor: _card,
-                    style: TextStyle(color: _text),
-                    decoration: _dropdownDecoration('Month'),
-                    items: List.generate(12, (index) {
-                      final month = index + 1;
-
-                      return DropdownMenuItem(
-                        value: month,
-                        child: Text(
-                          DateFormat('MMMM').format(DateTime(2000, month)),
-                        ),
-                      );
-                    }),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() {
-                          selectedMonthNumber = value;
-                        });
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text('Cancel', style: TextStyle(color: _muted)),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(
-                      dialogContext,
-                      DateTime(selectedYear, selectedMonthNumber),
-                    );
-                  },
-                  child: const Text('Select'),
-                ),
-              ],
-            );
-          },
+      firstDate: DateTime(2000),
+      lastDate: today,
+      initialDateRange: currentRange,
+      helpText: 'Select date range',
+      saveText: 'Apply',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: _primary,
+              onPrimary: Colors.white,
+              surface: _card,
+              onSurface: _text,
+            ),
+          ),
+          child: child!,
         );
       },
     );
 
     if (result != null && mounted) {
       setState(() {
-        selectedMonth = result;
+        selectedDateRange = DateTimeRange(
+          start: DateTime(
+            result.start.year,
+            result.start.month,
+            result.start.day,
+          ),
+          end: DateTime(result.end.year, result.end.month, result.end.day),
+        );
       });
     }
+  }
+
+  String getSelectedDateRangeTitle() {
+    final range = selectedDateRange;
+    if (range == null) {
+      final now = DateTime.now();
+      return '${DateFormat('MMM d').format(DateTime(now.year, now.month, 1))} – '
+          '${DateFormat('MMM d, yyyy').format(now)}';
+    }
+
+    final start = DateFormat('MMM d, yyyy').format(range.start);
+    final end = DateFormat('MMM d, yyyy').format(range.end);
+    return '$start – $end';
   }
 
   bool _matchesSearch(Map<String, dynamic> transaction) {
     final query = searchQuery.trim().toLowerCase();
     if (query.isEmpty) return true;
 
-    final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
-    final date = DateTime.tryParse(transaction['createdAt']?.toString() ?? '');
-    final searchableValues = [
-      transaction['category']?.toString() ?? '',
-      transaction['note']?.toString() ?? '',
-      transaction['type']?.toString() ?? '',
-      amount.toString(),
-      amount.toStringAsFixed(2),
-      _currencyFormat.format(amount),
-      date == null ? '' : DateFormat('MMMM d, yyyy').format(date),
-      date == null ? '' : DateFormat('MMM d, yyyy').format(date),
-    ];
-
-    return searchableValues.any((value) => value.toLowerCase().contains(query));
+    final note = transaction['note']?.toString() ?? '';
+    return note.toLowerCase().contains(query);
   }
 
   Widget _searchField() {
     return TextField(
+      controller: _searchController,
       onChanged: (value) {
         setState(() {
           searchQuery = value;
@@ -233,7 +174,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         labelText: 'Search transactions',
-        hintText: 'Category, note, amount, or date',
+        hintText: 'Search transaction notes',
         labelStyle: TextStyle(color: _muted),
         hintStyle: TextStyle(
           color: _muted.withValues(alpha: 0.8),
@@ -246,6 +187,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 tooltip: 'Clear search',
                 icon: Icon(Icons.close_rounded, color: _muted),
                 onPressed: () {
+                  _searchController.clear();
                   setState(() {
                     searchQuery = '';
                   });
@@ -382,7 +324,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Map<String, List<Map<String, dynamic>>> groupTransactionsByDate(
-    List<Map<String, dynamic>> monthTransactions,
+    List<Map<String, dynamic>> periodTransactions,
   ) {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
 
@@ -390,7 +332,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
 
-    final filteredTransactions = monthTransactions.where((transaction) {
+    final filteredTransactions = periodTransactions.where((transaction) {
       final matchesType =
           selectedTransactionType == null ||
           transaction['type'] == selectedTransactionType;
@@ -431,35 +373,41 @@ class _TransactionsPageState extends State<TransactionsPage> {
     return grouped;
   }
 
-  String getCurrentMonthTitle() {
-    return DateFormat('MMMM yyyy').format(selectedMonth);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // All records for the selected month. The monthly summary always
-    // represents the entire month, regardless of the history filter.
-    final monthTransactions = transactions.where((transaction) {
+    // The summary covers the selected date range and is independent
+    // of the transaction type and label search filters.
+    final range =
+        selectedDateRange ??
+        DateTimeRange(
+          start: DateTime(DateTime.now().year, DateTime.now().month, 1),
+          end: DateTime(
+            DateTime.now().year,
+            DateTime.now().month,
+            DateTime.now().day,
+          ),
+        );
+    final rangeEndExclusive = range.end.add(const Duration(days: 1));
+
+    final periodTransactions = transactions.where((transaction) {
       final date = DateTime.tryParse(
         transaction['createdAt']?.toString() ?? '',
       );
-
       return date != null &&
-          date.year == selectedMonth.year &&
-          date.month == selectedMonth.month;
+          !date.isBefore(range.start) &&
+          date.isBefore(rangeEndExclusive);
     }).toList();
 
-    // Apply the optional type filter to the history only.
-    final filteredMonthTransactions = monthTransactions.where((transaction) {
+    final filteredPeriodTransactions = periodTransactions.where((transaction) {
       final matchesType =
           selectedTransactionType == null ||
           transaction['type'] == selectedTransactionType;
       return matchesType && _matchesSearch(transaction);
     }).toList();
 
-    final groupedTransactions = groupTransactionsByDate(monthTransactions);
+    final groupedTransactions = groupTransactionsByDate(periodTransactions);
 
-    final totalExpenses = monthTransactions
+    final totalExpenses = periodTransactions
         .where((transaction) => transaction['type'] == 'Expense')
         .fold<double>(
           0,
@@ -467,7 +415,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               sum + ((transaction['amount'] as num?)?.toDouble() ?? 0),
         );
 
-    final totalBudgetRecords = monthTransactions
+    final totalBudgetRecords = periodTransactions
         .where((transaction) => transaction['type'] == 'Budget')
         .fold<double>(
           0,
@@ -516,12 +464,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                 children: [
-                  // Month selector
+                  // Date range selector
                   Material(
                     color: _card,
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
-                      onTap: selectMonthYear,
+                      onTap: selectDateRange,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -541,7 +489,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              getCurrentMonthTitle(),
+                              getSelectedDateRangeTitle(),
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -561,7 +509,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
                   const SizedBox(height: 18),
 
-                  // Monthly summary
+                  // Selected period summary
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
@@ -573,7 +521,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Monthly Summary',
+                          'Period Summary',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -625,7 +573,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
                   const SizedBox(height: 4),
                   Text(
-                    'Search your records or filter them by type and date.',
+                    'Search by transaction label or filter by type and date range.',
                     style: TextStyle(fontSize: 12, color: _muted),
                   ),
 
@@ -689,8 +637,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         ),
                       ),
                       Text(
-                        '${filteredMonthTransactions.length} '
-                        '${filteredMonthTransactions.length == 1 ? 'transaction' : 'transactions'}',
+                        '${filteredPeriodTransactions.length} '
+                        '${filteredPeriodTransactions.length == 1 ? 'transaction' : 'transactions'}',
                         style: TextStyle(fontSize: 12, color: _muted),
                       ),
                     ],
@@ -802,11 +750,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   Widget _buildEmptyState() {
     final description = searchQuery.trim().isNotEmpty
-        ? 'No transactions match “${searchQuery.trim()}”. Try another search.'
+        ? 'No transaction notes match “${searchQuery.trim()}”. Try another search.'
         : selectedTransactionType == null
-        ? 'There are no transactions for ${getCurrentMonthTitle()}.'
+        ? 'There are no transactions for ${getSelectedDateRangeTitle()}.'
         : 'There are no ${selectedTransactionType == 'Expense' ? 'expenses' : 'budget records'} '
-              'for ${getCurrentMonthTitle()}.';
+              'for ${getSelectedDateRangeTitle()}.';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),

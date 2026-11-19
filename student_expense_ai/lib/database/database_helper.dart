@@ -23,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       join(dbPath, 'student_expense_ai.db'),
-      version: 3,
+      version: 4,
       onCreate: _createDatabase,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -32,6 +32,11 @@ class DatabaseHelper {
         if (oldVersion < 3) {
           await db.execute(
             "ALTER TABLE user_profile ADD COLUMN homePeriod TEXT NOT NULL DEFAULT 'Monthly'",
+          );
+        }
+        if (oldVersion < 4) {
+          await db.execute(
+            "ALTER TABLE user_profile ADD COLUMN analyticsPeriod TEXT NOT NULL DEFAULT 'This Month'",
           );
         }
       },
@@ -93,7 +98,8 @@ class DatabaseHelper {
         workplace TEXT,
         workplaceAddress TEXT,
         position TEXT,
-        homePeriod TEXT NOT NULL DEFAULT 'Monthly'
+        homePeriod TEXT NOT NULL DEFAULT 'Monthly',
+        analyticsPeriod TEXT NOT NULL DEFAULT 'This Month'
       )
     ''');
 
@@ -153,24 +159,31 @@ class DatabaseHelper {
   Future<void> saveUserProfile(Map<String, dynamic> data) async {
     final db = await database;
 
-    // Preserve the saved Home period when the profile is replaced/updated.
     final existingProfile = await db.query(
       'user_profile',
-      columns: ['homePeriod'],
+      columns: ['homePeriod', 'analyticsPeriod'],
       where: 'id = ?',
       whereArgs: [1],
       limit: 1,
     );
+
     final savedHomePeriod =
         data['homePeriod'] ??
         (existingProfile.isNotEmpty
             ? existingProfile.first['homePeriod']
             : 'Monthly');
 
+    final savedAnalyticsPeriod =
+        data['analyticsPeriod'] ??
+        (existingProfile.isNotEmpty
+            ? existingProfile.first['analyticsPeriod']
+            : 'This Month');
+
     await db.insert('user_profile', {
       'id': 1,
       ...data,
       'homePeriod': savedHomePeriod,
+      'analyticsPeriod': savedAnalyticsPeriod,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
@@ -209,6 +222,62 @@ class DatabaseHelper {
     await db.update(
       'user_profile',
       {'homePeriod': period},
+      where: 'id = ?',
+      whereArgs: [1],
+    );
+  }
+
+  // Returns the user's preferred Analytics period.
+  // Defaults to This Month when no preference has been saved.
+  Future<String> getAnalyticsPeriod() async {
+    final db = await database;
+
+    final result = await db.query(
+      'user_profile',
+      columns: ['analyticsPeriod'],
+      where: 'id = ?',
+      whereArgs: [1],
+      limit: 1,
+    );
+
+    if (result.isEmpty) return 'This Month';
+
+    final period = result.first['analyticsPeriod']?.toString() ?? 'This Month';
+
+    const validPeriods = [
+      'This Day',
+      'This Week',
+      'This Month',
+      'Past 3 Months',
+      'Past 6 Months',
+      'Past 12 Months',
+      'All Time',
+    ];
+
+    return validPeriods.contains(period) ? period : 'This Month';
+  }
+
+  // Saves the user's preferred Analytics period in their profile.
+  Future<void> updateAnalyticsPeriod(String period) async {
+    const validPeriods = [
+      'This Day',
+      'This Week',
+      'This Month',
+      'Past 3 Months',
+      'Past 6 Months',
+      'Past 12 Months',
+      'All Time',
+    ];
+
+    if (!validPeriods.contains(period)) {
+      throw ArgumentError.value(period, 'period', 'Invalid Analytics period');
+    }
+
+    final db = await database;
+
+    await db.update(
+      'user_profile',
+      {'analyticsPeriod': period},
       where: 'id = ?',
       whereArgs: [1],
     );

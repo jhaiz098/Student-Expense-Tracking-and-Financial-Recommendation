@@ -97,6 +97,39 @@ class _HomePageState extends State<HomePage> {
     await loadSummary();
   }
 
+  String get selectedPeriodBudgetLabel {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    switch (selectedPeriod) {
+      case 'Daily':
+        final tomorrow = today.add(const Duration(days: 1));
+        final hoursLeft = (tomorrow.difference(now).inMinutes / 60).ceil();
+
+        return '${DateFormat('MMMM d, yyyy').format(now)} budget · '
+            '${hoursLeft}h left';
+
+      case 'Weekly':
+        final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+        final endOfWeek = startOfWeek.add(const Duration(days: 6));
+        final daysLeft = endOfWeek.difference(today).inDays;
+
+        return '${DateFormat('MMM d').format(startOfWeek)} – '
+            '${DateFormat('MMM d, yyyy').format(endOfWeek)} budget · '
+            '$daysLeft days left';
+
+      case 'Monthly':
+        final endOfMonth = DateTime(now.year, now.month + 1, 0);
+        final daysLeft = endOfMonth.difference(today).inDays;
+
+        return '${DateFormat('MMMM yyyy').format(now)} budget · '
+            '$daysLeft days left';
+
+      default:
+        return '$selectedPeriod budget';
+    }
+  }
+
   DateTime _periodStart(DateTime now) {
     switch (selectedPeriod) {
       case 'Daily':
@@ -420,7 +453,7 @@ class _HomePageState extends State<HomePage> {
                             'Remaining Budget',
                             style: TextStyle(
                               color: Color(0xFFDCD5FF),
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -452,7 +485,7 @@ class _HomePageState extends State<HomePage> {
                                 isOverBudget
                                     ? 'Over budget'
                                     : hasBudget
-                                    ? '$selectedPeriod budget'
+                                    ? selectedPeriodBudgetLabel
                                     : 'No budget set',
                                 style: const TextStyle(
                                   color: Colors.white,

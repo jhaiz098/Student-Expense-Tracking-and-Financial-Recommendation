@@ -57,6 +57,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   ];
 
   final List<String> _periodOptions = const [
+    'This Day',
+    'This Week',
     'This Month',
     'Past 3 Months',
     'Past 6 Months',
@@ -82,7 +84,47 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   @override
   void initState() {
     super.initState();
-    loadAnalytics();
+    _initializeAnalytics();
+  }
+
+  // Loads the saved Analytics period before calculating the displayed data.
+  Future<void> _initializeAnalytics() async {
+    try {
+      final savedPeriod = await DatabaseHelper.instance.getAnalyticsPeriod();
+
+      if (!mounted) return;
+
+      setState(() {
+        selectedPeriod = _periodOptions.contains(savedPeriod)
+            ? savedPeriod
+            : 'This Month';
+      });
+    } catch (_) {
+      // Keep the default period if the saved preference cannot be read.
+      if (!mounted) return;
+      setState(() => selectedPeriod = 'This Month');
+    }
+
+    await loadAnalytics();
+  }
+
+  // Updates the visible period immediately and saves the preference locally.
+  Future<void> _changePeriod(String period) async {
+    if (!_periodOptions.contains(period) || period == selectedPeriod) return;
+
+    setState(() => selectedPeriod = period);
+
+    try {
+      await DatabaseHelper.instance.updateAnalyticsPeriod(period);
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to save your Analytics period preference.'),
+        ),
+      );
+    }
   }
 
   Future<void> refresh() => loadAnalytics();
@@ -141,6 +183,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final now = DateTime.now();
 
     switch (selectedPeriod) {
+      case 'This Day':
+        return _today;
+      case 'This Week':
+        return _today.subtract(Duration(days: now.weekday - 1));
       case 'This Month':
         return DateTime(now.year, now.month, 1);
       case 'Past 3 Months':
@@ -156,6 +202,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   int? get _periodMonthCount {
     switch (selectedPeriod) {
+      case 'This Day':
+      case 'This Week':
+      case 'All Time':
+        return null;
       case 'This Month':
         return 1;
       case 'Past 3 Months':
@@ -169,7 +219,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     }
   }
 
-  DateTime get _periodEndExclusive => _nextMonthStart;
+  DateTime get _periodEndExclusive {
+    switch (selectedPeriod) {
+      case 'This Day':
+        return _today.add(const Duration(days: 1));
+      case 'This Week':
+        return _periodStart!.add(const Duration(days: 7));
+      default:
+        return _nextMonthStart;
+    }
+  }
 
   Widget _comparisonRow(String label, String value, {Color? valueColor}) {
     return Row(
@@ -194,12 +253,25 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   // Returns the start of the previous comparison period.
   DateTime? get _previousPeriodStart {
-    final months = _periodMonthCount;
     final start = _periodStart;
+    if (start == null) return null;
 
-    if (months == null || start == null) return null;
-
-    return DateTime(start.year, start.month - months, 1);
+    switch (selectedPeriod) {
+      case 'This Day':
+        return start.subtract(const Duration(days: 1));
+      case 'This Week':
+        return start.subtract(const Duration(days: 7));
+      case 'This Month':
+      case 'Past 3 Months':
+      case 'Past 6 Months':
+      case 'Past 12 Months':
+        final months = _periodMonthCount;
+        return months == null
+            ? null
+            : DateTime(start.year, start.month - months, 1);
+      default:
+        return null;
+    }
   }
 
   // Formats a month range so users know exactly what is being compared.
@@ -221,6 +293,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   String get _currentPeriodLabel {
     final start = _periodStart;
+
+    if (selectedPeriod == 'This Day') {
+      return DateFormat('MMMM d, yyyy').format(_today);
+    }
+
+    if (selectedPeriod == 'This Week' && start != null) {
+      final lastDay = _periodEndExclusive.subtract(const Duration(days: 1));
+      return '${DateFormat('MMM d').format(start)}–'
+          '${DateFormat('MMM d, yyyy').format(lastDay)}';
+    }
 
     if (start == null) {
       if (expenses.isEmpty && budgets.isEmpty) return 'All recorded dates';
@@ -246,6 +328,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final currentStart = _periodStart;
 
     if (start == null || currentStart == null) return null;
+
+    if (selectedPeriod == 'This Day') {
+      return DateFormat('MMM d, yyyy').format(start);
+    }
+
+    if (selectedPeriod == 'This Week') {
+      final lastDay = currentStart.subtract(const Duration(days: 1));
+      return '${DateFormat('MMM d').format(start)}–'
+          '${DateFormat('MMM d, yyyy').format(lastDay)}';
+    }
 
     return _monthRangeLabel(start, currentStart);
   }
@@ -649,7 +741,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   .toList(),
               onChanged: (value) {
                 if (value != null) {
-                  setState(() => selectedPeriod = value);
+                  _changePeriod(value);
                 }
               },
             ),
@@ -846,25 +938,28 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               ),
             ],
           ),
+
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _smallMetric(
-                  'Average per day',
-                  _money.format(_averagePerCalendarDay),
-                  Icons.calendar_month_outlined,
+
+          if (selectedPeriod != 'This Day')
+            Row(
+              children: [
+                Expanded(
+                  child: _smallMetric(
+                    'Average per day',
+                    _money.format(_averagePerCalendarDay),
+                    Icons.calendar_month_outlined,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _smallMetric(
-                  'Days with spending',
-                  '$_activeSpendingDays',
-                  Icons.event_available_outlined,
+                Expanded(
+                  child: _smallMetric(
+                    'Days with spending',
+                    '$_activeSpendingDays',
+                    Icons.event_available_outlined,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
           if (previous != null) ...[
             const SizedBox(height: 16),
